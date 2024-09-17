@@ -1,10 +1,6 @@
 import sqlite3
 from sqlite3 import Connection
 
-import sqlite3
-from sqlite3 import Connection
-
-
 def upgrade_to_v1(conn: Connection) -> None:
     """Обновление базы данных до версии 1"""
     cursor = conn.cursor()
@@ -26,15 +22,15 @@ def upgrade_to_v1(conn: Connection) -> None:
             cursor.execute("ALTER TABLE users ADD COLUMN learned_words_count INTEGER DEFAULT 0;")
     else:
         # Если таблицы нет, создаем её
-        cursor.execute("""
+        cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER UNIQUE NOT NULL,
-            username_tg TEXT,
-            full_name TEXT,
-            balance INTEGER DEFAULT 0,
-            elite_status TEXT DEFAULT 'No' CHECK(elite_status IN ('Yes', 'No')),
-            learned_words_count INTEGER DEFAULT 0
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER UNIQUE NOT NULL,
+                username_tg TEXT,
+                full_name TEXT,
+                balance INTEGER DEFAULT 0,
+                elite_status TEXT DEFAULT 'No' CHECK(elite_status IN ('Yes', 'No')),
+                learned_words_count INTEGER DEFAULT 0
             )
         """)
 
@@ -43,12 +39,27 @@ def upgrade_to_v1(conn: Connection) -> None:
     table_exists = cursor.fetchone()
 
     if not table_exists:
-        cursor.execute("""
+        cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS user_dictionary (
                 user_id INTEGER NOT NULL,
+                topic_name TEXT NOT NULL,
                 word TEXT NOT NULL,
                 translation TEXT NOT NULL,
-                PRIMARY KEY (user_id, word),
+                PRIMARY KEY (user_id, topic_name, word),
+                FOREIGN KEY (user_id) REFERENCES users (user_id)
+            )
+        """)
+
+    # Создаем таблицу `topics` с учетом пользователя
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='topics';")
+    table_exists = cursor.fetchone()
+
+    if not table_exists:
+        cursor.execute(""" 
+            CREATE TABLE IF NOT EXISTS topics (
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                PRIMARY KEY (user_id, name),
                 FOREIGN KEY (user_id) REFERENCES users (user_id)
             )
         """)
