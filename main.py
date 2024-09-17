@@ -2,7 +2,7 @@ import sqlite3
 from sqlite3 import Connection
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
 import asyncio
 import logging
 import sys
@@ -42,14 +42,14 @@ def upsert_user(user_id: int, username_tg: str, full_name: str, balance: int = 0
         conn.close()
 
 # Функция для добавления темы в базу данных (с привязкой к пользователю)
-def add_user_topic(user_id: int, topic_name: str) -> None:
+def add_user_topic(author_id: int, content: str, visible: int) -> None:
     conn = create_connection(DB_FILE)
     try:
         cursor = conn.cursor()
-        cursor.execute("""INSERT INTO topics (user_id, name)
-                          VALUES (?, ?)
-                          ON CONFLICT(user_id, name) DO NOTHING
-                       """, (user_id, topic_name))
+        cursor.execute("""INSERT INTO topics (author_id, content, visible)
+                          VALUES (?, ?, ?)
+                          ON CONFLICT(id) DO NOTHING
+                       """, (author_id, content, visible))
         conn.commit()
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
@@ -57,17 +57,14 @@ def add_user_topic(user_id: int, topic_name: str) -> None:
         conn.close()
 
 # Функция для добавления слова в выбранную тему
-def add_word_to_user_topic(user_id: int, topic_name: str, word: str, translation: str) -> None:
+def add_word_to_user_topic(user_id: int, topic_id: int, word: str, translation: str) -> None:
     conn = create_connection(DB_FILE)
     try:
         cursor = conn.cursor()
-        cursor.execute("""INSERT INTO user_dictionary (user_id, topic_name, word, translation)
+        cursor.execute("""INSERT INTO user_dictionary (user_id, topic_id, word, translation)
                           VALUES (?, ?, ?, ?)
-                       """, (user_id, topic_name, word, translation))
-
-        # Обновляем количество изученных слов
+                       """, (user_id, topic_id, word, translation))
         update_learned_words_count(user_id)
-
         conn.commit()
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
@@ -79,11 +76,9 @@ def update_learned_words_count(user_id: int) -> None:
     conn = create_connection(DB_FILE)
     try:
         cursor = conn.cursor()
-        cursor.execute("""SELECT COUNT(*) FROM user_dictionary WHERE user_id = ?
-                       """, (user_id,))
+        cursor.execute("""SELECT COUNT(*) FROM user_dictionary WHERE user_id = ?""", (user_id,))
         learned_words_count = cursor.fetchone()[0]
-        cursor.execute("""UPDATE users SET learned_words_count = ? WHERE user_id = ?
-                       """, (learned_words_count, user_id))
+        cursor.execute("""UPDATE users SET learned_words_count = ? WHERE user_id = ?""", (learned_words_count, user_id))
         conn.commit()
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
@@ -95,9 +90,11 @@ def search_user_topics(user_id: int, query: str) -> list:
     conn = create_connection(DB_FILE)
     try:
         cursor = conn.cursor()
-        cursor.execute("""SELECT name FROM topics WHERE user_id = ? AND name LIKE ?
-                       """, (user_id, f"{query}%"))
-        return [row[0] for row in cursor.fetchall()]
+        cursor.execute("""SELECT id, content 
+                          FROM topics 
+                          WHERE (author_id = ? OR visible = 1) 
+                          AND content LIKE ?""", (user_id, f"%{query}%"))
+        return cursor.fetchall()
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
         return []
@@ -138,7 +135,6 @@ async def process_start_learning(callback_query: types.CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     await bot.answer_callback_query(callback_query.id)
 
-    # Отправляем сообщение с кнопками "Изучение слов" и "Профиль"
     kb = [
         [types.KeyboardButton(text="Изучение слов")],
         [types.KeyboardButton(text="Профиль")]
@@ -152,7 +148,6 @@ async def process_start_learning(callback_query: types.CallbackQuery) -> None:
 async def learning(message: types.Message) -> None:
     user_id = message.from_user.id
 
-    # Отправляем сообщение с кнопками "Добавить тему" и "Добавить слова"
     kb = [
         [types.KeyboardButton(text="Добавить тему")],
         [types.KeyboardButton(text="Добавить слова")]
@@ -167,11 +162,11 @@ async def add_topic_prompt(message: types.Message) -> None:
     await message.answer("Введите название темы:")
 
 # Обработка текста для добавления темы
-@dp.message(lambda m: m.text and m.text != "Добавить тему" and m.text != "Добавить слова" and m.text != "Профиль")
+@dp.message(lambda m: m.text and m.text not in ["Добавить тему", "Добавить слова", "Профиль"])
 async def process_add_topic(message: types.Message) -> None:
     user_id = message.from_user.id
     topic_name = message.text
-    add_user_topic(user_id, topic_name)
+    add_user_topic(user_id, topic_name, visible=0)  # Видимость по умолчанию - 0 (только автор)
 
     kb = [
         [types.KeyboardButton(text="Добавить тему")],
@@ -181,18 +176,58 @@ async def process_add_topic(message: types.Message) -> None:
 
     await message.answer("Вы успешно добавили тему!", reply_markup=keyboard)
 
-# Обработка нажатия на кнопку "Добавить слова"
+
+
+
+
+# Обработка команды "Добавить слова"
 @dp.message(F.text == "Добавить слова")
 async def add_words_prompt(message: types.Message) -> None:
-    kb = [
-        [types.KeyboardButton(text="Выбрать тему")]
-    ]
-    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Выбрать тему", switch_inline_query_current_chat="")]
+    ])
+    await message.answer("Выберите тему из предложенных:", reply_markup=kb)
 
-    await message.answer(
-        "Введите название темы для добавления слов:",
-        reply_markup=keyboard
-    )
+@dp.inline_query()
+async def inline_query_handler(inline_query: types.InlineQuery) -> None:
+    query = inline_query.query.strip()
+    user_id = inline_query.from_user.id
+
+    # Подключение к базе данных
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    try:
+        # Поиск тем по запросу, используя столбец `content`
+        cursor.execute("""
+            SELECT id, content
+            FROM topics
+            WHERE (author_id = ? OR visible = 1) AND content LIKE ? 
+        """, (user_id, f'%{query}%'))
+        results = cursor.fetchall()
+    except sqlite3.OperationalError as e:
+        print(f"Database error: {e}")
+        results = []
+    finally:
+        conn.close()
+
+    # Формирование результатов
+    items = [
+        InlineQueryResultArticle(
+            id=str(item[0]),
+            title=item[1],
+            input_message_content = InputTextMessageContent(message_text=f"Вы выбрали тему: {item[1]}")
+        )
+        for item in results
+    ]
+
+    # Отправка результатов
+    await bot.answer_inline_query(inline_query.id, results=items)
+
+
+
+
+
 
 # Обработка нажатия на кнопку "Выбрать тему"
 @dp.message(F.text == "Выбрать тему")
@@ -200,10 +235,10 @@ async def choose_topic(message: types.Message) -> None:
     user_id = message.from_user.id
     topics = search_user_topics(user_id, '')  # Получаем все темы пользователя
 
+    logging.info(f"Found topics for user {user_id}: {topics}")
+
     if topics:
-        kb = [
-            [types.InlineKeyboardButton(text=topic, callback_data=f"select_topic_{topic}") for topic in topics]
-        ]
+        kb = [[types.InlineKeyboardButton(text=content, callback_data=f"select_topic_{id_}") for id_, content in topics]]
         keyboard = InlineKeyboardMarkup(inline_keyboard=kb)
         await message.answer("Выберите тему из предложенных:", reply_markup=keyboard)
     else:
@@ -212,40 +247,41 @@ async def choose_topic(message: types.Message) -> None:
 # Обработка выбора темы из inline клавиатуры
 @dp.callback_query(lambda c: c.data.startswith('select_topic_'))
 async def process_topic_selection_callback(callback_query: types.CallbackQuery) -> None:
-    topic_name = callback_query.data[len('select_topic_'):]
+    topic_id = int(callback_query.data[len('select_topic_'):])
     await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(callback_query.from_user.id, f"Вы выбрали тему: {topic_name}. Введите слово на английском:")
+    await bot.send_message(callback_query.from_user.id, f"Вы выбрали тему с ID: {topic_id}. Введите слово на английском:")
 
     # Сохранение выбранной темы в пользовательском контексте
-    dp.user_data[callback_query.from_user.id] = {'selected_topic': topic_name}
+    dp.user_data[callback_query.from_user.id] = {'selected_topic_id': topic_id}
 
 # Обработка текста для добавления слова
-@dp.message(lambda m: m.text and m.text != "Добавить тему" and m.text != "Добавить слова" and m.text != "Выбрать тему")
-async def process_word(message: types.Message) -> None:
+@dp.message(lambda m: m.text and m.text not in ["Добавить тему", "Добавить слова", "Профиль"])
+async def process_add_topic(message: types.Message) -> None:
     user_id = message.from_user.id
-    if 'selected_topic' in dp.user_data.get(user_id, {}):
-        topic_name = dp.user_data[user_id]['selected_topic']
-        word = message.text
-        # Запрос перевода
-        await bot.send_message(user_id, f"Введите перевод для слова '{word}':")
-        dp.user_data[user_id]['word_to_add'] = word
-        dp.user_data[user_id]['topic_to_add'] = topic_name
-    else:
-        await message.answer("Сначала выберите тему для добавления слова.")
+    topic_name = message.text
+    add_user_topic(user_id, topic_name, visible=0)
+
+    kb = [
+        [types.KeyboardButton(text="Добавить тему")],
+        [types.KeyboardButton(text="Добавить слова")]
+    ]
+    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+    await message.answer("Вы успешно добавили тему!", reply_markup=keyboard)
 
 # Обработка перевода слова
-@dp.message(lambda m: m.text and m.text != "Добавить тему" and m.text != "Добавить слова" and m.text != "Выбрать тему" and m.text != "Введите слово на английском:")
+@dp.message(lambda m: m.text and m.text not in ["Добавить тему", "Добавить слова", "Выбрать тему"] and not m.text.startswith("Введите слово на английском:"))
 async def process_translation(message: types.Message) -> None:
     user_id = message.from_user.id
     if 'word_to_add' in dp.user_data.get(user_id, {}):
         word = dp.user_data[user_id]['word_to_add']
         translation = message.text
-        topic_name = dp.user_data[user_id]['topic_to_add']
-        add_word_to_user_topic(user_id, topic_name, word, translation)
+        topic_id = dp.user_data[user_id]['topic_id_to_add']
+        add_word_to_user_topic(user_id, topic_id, word, translation)
 
         # Очистка контекста пользователя
         dp.user_data[user_id].pop('word_to_add', None)
-        dp.user_data[user_id].pop('topic_to_add', None)
+        dp.user_data[user_id].pop('topic_id_to_add', None)
 
         kb = [
             [types.KeyboardButton(text="Добавить тему")],
@@ -253,7 +289,7 @@ async def process_translation(message: types.Message) -> None:
         ]
         keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
-        await message.answer(f"Вы успешно добавили слово '{word}' в тему '{topic_name}'!", reply_markup=keyboard)
+        await message.answer(f"Вы успешно добавили слово '{word}' в тему с ID '{topic_id}'!", reply_markup=keyboard)
 
 # Обработка команды /help
 @dp.message(Command("help"))
@@ -270,3 +306,4 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+

@@ -50,17 +50,18 @@ def upgrade_to_v1(conn: Connection) -> None:
             )
         """)
 
-    # Создаем таблицу `topics` с учетом пользователя
+    # Создаем таблицу `topics` с указанными полями
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='topics';")
     table_exists = cursor.fetchone()
 
     if not table_exists:
         cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS topics (
-                user_id INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                PRIMARY KEY (user_id, name),
-                FOREIGN KEY (user_id) REFERENCES users (user_id)
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                author_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                visible INTEGER DEFAULT 0 CHECK(visible IN (0, 1)),
+                FOREIGN KEY (author_id) REFERENCES users (user_id)
             )
         """)
 
