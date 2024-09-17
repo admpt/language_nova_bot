@@ -2,6 +2,8 @@ import sqlite3
 from sqlite3 import Connection
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
 import asyncio
 import logging
@@ -15,6 +17,15 @@ DB_FILE = 'database.db'
 # Создание экземпляров
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+# Состояния пользователя
+class Form(StatesGroup):
+    waiting_for_topic_name = State()
+    waiting_for_word = State()
+    waiting_for_translation = State()
 
 # Функция для создания соединения с базой данных
 def create_connection(db_file: str) -> Connection:
@@ -156,14 +167,16 @@ async def learning(message: types.Message) -> None:
 
     await message.answer("Что вы хотите сделать дальше?", reply_markup=keyboard)
 
+
 # Обработка нажатия на кнопку "Добавить тему"
 @dp.message(F.text == "Добавить тему")
-async def add_topic_prompt(message: types.Message) -> None:
+async def add_topic_prompt(message: types.Message, state: FSMContext) -> None:
     await message.answer("Введите название темы:")
+    await state.set_state(Form.waiting_for_topic_name.state)  # Исправление здесь
 
 # Обработка текста для добавления темы
-@dp.message(lambda m: m.text and m.text not in ["Добавить тему", "Добавить слова", "Профиль"])
-async def process_add_topic(message: types.Message) -> None:
+@dp.message(State(Form.waiting_for_topic_name))
+async def process_add_topic(message: types.Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     topic_name = message.text
     add_user_topic(user_id, topic_name, visible=0)  # Видимость по умолчанию - 0 (только автор)
@@ -175,9 +188,7 @@ async def process_add_topic(message: types.Message) -> None:
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
     await message.answer("Вы успешно добавили тему!", reply_markup=keyboard)
-
-
-
+    await state.clear()
 
 
 # Обработка команды "Добавить слова"
@@ -216,7 +227,7 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
         InlineQueryResultArticle(
             id=str(item[0]),
             title=item[1],
-            input_message_content = InputTextMessageContent(message_text=f"Вы выбрали тему: {item[1]}")
+            input_message_content=InputTextMessageContent(message_text=f"Вы выбрали тему: {item[1]}")
         )
         for item in results
     ]
@@ -224,14 +235,9 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
     # Отправка результатов
     await bot.answer_inline_query(inline_query.id, results=items)
 
-
-
-
-
-
 # Обработка нажатия на кнопку "Выбрать тему"
 @dp.message(F.text == "Выбрать тему")
-async def choose_topic(message: types.Message) -> None:
+async def choose_topic(message: types.Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     topics = search_user_topics(user_id, '')  # Получаем все темы пользователя
 
@@ -246,20 +252,39 @@ async def choose_topic(message: types.Message) -> None:
 
 # Обработка выбора темы из inline клавиатуры
 @dp.callback_query(lambda c: c.data.startswith('select_topic_'))
-async def process_topic_selection_callback(callback_query: types.CallbackQuery) -> None:
+async def process_topic_selection_callback(callback_query: types.CallbackQuery, state: FSMContext) -> None:
     topic_id = int(callback_query.data[len('select_topic_'):])
     await bot.answer_callback_query(callback_query.id)
     await bot.send_message(callback_query.from_user.id, f"Вы выбрали тему с ID: {topic_id}. Введите слово на английском:")
 
     # Сохранение выбранной темы в пользовательском контексте
-    dp.user_data[callback_query.from_user.id] = {'selected_topic_id': topic_id}
+    await state.update_data(selected_topic_id=topic_id)
+    await state.set_state(Form.waiting_for_word.state)  # Исправление здесь
 
 # Обработка текста для добавления слова
-@dp.message(lambda m: m.text and m.text not in ["Добавить тему", "Добавить слова", "Профиль"])
-async def process_add_topic(message: types.Message) -> None:
+@dp.message(State(Form.waiting_for_word))
+async def process_word(message: types.Message, state: FSMContext) -> None:
     user_id = message.from_user.id
-    topic_name = message.text
-    add_user_topic(user_id, topic_name, visible=0)
+    word = message.text
+
+    # Сохранение введенного слова и ожидание перевода
+    await state.update_data(word_to_add=word)
+    await message.answer("Введите перевод слова:")
+    await state.set_state(Form.waiting_for_translation.state)  # Исправление здесь
+
+# Обработка текста для добавления перевода
+@dp.message(State(Form.waiting_for_translation))
+async def process_translation(message: types.Message, state: FSMContext) -> None:
+    user_id = message.from_user.id
+    translation = message.text
+    data = await state.get_data()
+    word = data.get('word_to_add')
+    topic_id = data.get('selected_topic_id')
+
+    add_word_to_user_topic(user_id, topic_id, word, translation)
+
+    # Очистка контекста пользователя
+    await state.clear()
 
     kb = [
         [types.KeyboardButton(text="Добавить тему")],
@@ -267,37 +292,12 @@ async def process_add_topic(message: types.Message) -> None:
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
-    await message.answer("Вы успешно добавили тему!", reply_markup=keyboard)
-
-# Обработка перевода слова
-@dp.message(lambda m: m.text and m.text not in ["Добавить тему", "Добавить слова", "Выбрать тему"] and not m.text.startswith("Введите слово на английском:"))
-async def process_translation(message: types.Message) -> None:
-    user_id = message.from_user.id
-    if 'word_to_add' in dp.user_data.get(user_id, {}):
-        word = dp.user_data[user_id]['word_to_add']
-        translation = message.text
-        topic_id = dp.user_data[user_id]['topic_id_to_add']
-        add_word_to_user_topic(user_id, topic_id, word, translation)
-
-        # Очистка контекста пользователя
-        dp.user_data[user_id].pop('word_to_add', None)
-        dp.user_data[user_id].pop('topic_id_to_add', None)
-
-        kb = [
-            [types.KeyboardButton(text="Добавить тему")],
-            [types.KeyboardButton(text="Добавить слова")]
-        ]
-        keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-
-        await message.answer(f"Вы успешно добавили слово '{word}' в тему с ID '{topic_id}'!", reply_markup=keyboard)
+    await message.answer(f"Вы успешно добавили слово '{word}' в тему с ID '{topic_id}'!", reply_markup=keyboard)
 
 # Обработка команды /help
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message) -> None:
     await message.answer("Это бот для изучения английского языка. Используйте команды и кнопки для добавления тем и слов.")
-
-# Настройка логирования
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 # Запуск бота
 async def main() -> None:
@@ -306,4 +306,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-
