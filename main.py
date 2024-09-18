@@ -21,15 +21,35 @@ dp = Dispatcher()
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
+# Список команд
+COMMANDS = [
+    "/start",
+    "/help",
+    "Изучение слов",
+    "Добавить тему",
+    "Добавить слова",
+    "Выбрать тему"
+]
+
 # Состояния пользователя
 class Form(StatesGroup):
     waiting_for_topic_name = State()
     waiting_for_word = State()
     waiting_for_translation = State()
 
+# Функция для проверки на наличие команд
+def is_command(text: str) -> bool:
+    return text.startswith('/')
+
 # Функция для создания соединения с базой данных
 def create_connection(db_file: str) -> Connection:
-    return sqlite3.connect(db_file)
+    try:
+        conn = sqlite3.connect(db_file)
+        logging.info("Connection to database established.")
+        return conn
+    except sqlite3.Error as e:
+        logging.error(f"Database connection error: {e}")
+        raise
 
 # Функция для добавления или обновления пользователя в базе данных
 def upsert_user(user_id: int, username_tg: str, full_name: str, balance: int = 0, elite_status: str = 'No',
@@ -63,7 +83,7 @@ def add_user_topic(author_id: int, content: str, visible: int) -> None:
                        """, (author_id, content, visible))
         conn.commit()
     except sqlite3.Error as e:
-        logging.error(f"Database error: {e}")
+        logging.error(f"Ошибка базы данных при добавлении темы: {e}")
     finally:
         conn.close()
 
@@ -112,33 +132,6 @@ def search_user_topics(user_id: int, query: str) -> list:
     finally:
         conn.close()
 
-# Обработка команды /start
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message) -> None:
-    logging.info(f"Received /start command from {message.from_user.id}")
-
-    button = InlineKeyboardButton(text="Начать обучение!", callback_data="start_learning")
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button]])
-
-    await message.answer("Добро пожаловать! Нажмите кнопку ниже, чтобы начать изучение:", reply_markup=keyboard)
-
-    try:
-        first_name = message.from_user.first_name
-        last_name = message.from_user.last_name
-
-        if first_name and last_name:
-            full_name = f"{first_name} {last_name}"
-        elif first_name:
-            full_name = first_name
-        elif last_name:
-            full_name = last_name
-        else:
-            full_name = ""
-
-        upsert_user(message.from_user.id, message.from_user.username or '', full_name)
-        logging.info(f"User data updated for {message.from_user.id}")
-    except Exception as e:
-        logging.error(f"Error while updating user data: {e}")
 
 # Обработка нажатия на кнопку "Начать обучение!"
 @dp.callback_query(lambda c: c.data == 'start_learning')
@@ -167,33 +160,38 @@ async def learning(message: types.Message) -> None:
 
     await message.answer("Что вы хотите сделать дальше?", reply_markup=keyboard)
 
-
 # Обработка нажатия на кнопку "Добавить тему"
 @dp.message(F.text == "Добавить тему")
 async def add_topic_prompt(message: types.Message, state: FSMContext) -> None:
+    await state.clear()  # Сбрасываем состояние перед установкой нового
     await message.answer("Введите название темы:")
-    await state.set_state(Form.waiting_for_topic_name.state)  # Исправление здесь
+    await state.set_state(Form.waiting_for_topic_name.state)
+    logging.info(f"Состояние установлено: {state}")
 
 # Обработка текста для добавления темы
-@dp.message(State(Form.waiting_for_topic_name))
+@dp.message(Form.waiting_for_topic_name)
 async def process_add_topic(message: types.Message, state: FSMContext) -> None:
-    user_id = message.from_user.id
-    topic_name = message.text
-    add_user_topic(user_id, topic_name, visible=0)  # Видимость по умолчанию - 0 (только автор)
+    logging.info("Обработчик для ожидания названия темы сработал.")
+    author_id = message.from_user.id
+    content = message.text.strip()
 
-    kb = [
-        [types.KeyboardButton(text="Добавить тему")],
-        [types.KeyboardButton(text="Добавить слова")]
-    ]
-    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    if is_command(message.text):
+        await message.answer("Вы не можете использовать команды в качестве названий тем.")
+        return
 
-    await message.answer("Вы успешно добавили тему!", reply_markup=keyboard)
-    await state.clear()
-
+    if content:
+        add_user_topic(author_id, content, 0)
+        await message.answer("Вы успешно добавили тему! Что вы хотите сделать дальше?")
+        await state.clear()
+        logging.info(f"Тема '{content}' добавлена пользователем {author_id}. Состояние сброшено.")
+    else:
+        await message.answer("Название темы не может быть пустым.")
+        logging.warning(f"Пользователь {author_id} ввел пустое название темы.")
 
 # Обработка команды "Добавить слова"
 @dp.message(F.text == "Добавить слова")
-async def add_words_prompt(message: types.Message) -> None:
+async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
+    await state.clear()  # Сбрасываем состояние
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Выбрать тему", switch_inline_query_current_chat="")]
     ])
@@ -210,14 +208,13 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
 
     try:
         # Поиск тем по запросу, используя столбец `content`
-        cursor.execute("""
-            SELECT id, content
-            FROM topics
-            WHERE (author_id = ? OR visible = 1) AND content LIKE ? 
-        """, (user_id, f'%{query}%'))
+        cursor.execute("""SELECT id, content
+                          FROM topics
+                          WHERE (author_id = ? OR visible = 1) AND content LIKE ? 
+                       """, (user_id, f'%{query}%'))
         results = cursor.fetchall()
     except sqlite3.OperationalError as e:
-        print(f"Database error: {e}")
+        logging.error(f"Database error: {e}")
         results = []
     finally:
         conn.close()
@@ -255,31 +252,76 @@ async def choose_topic(message: types.Message, state: FSMContext) -> None:
 async def process_topic_selection_callback(callback_query: types.CallbackQuery, state: FSMContext) -> None:
     topic_id = int(callback_query.data[len('select_topic_'):])
     await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(callback_query.from_user.id, f"Вы выбрали тему с ID: {topic_id}. Введите слово на английском:")
 
-    # Сохранение выбранной темы в пользовательском контексте
-    await state.update_data(selected_topic_id=topic_id)
-    await state.set_state(Form.waiting_for_word.state)  # Исправление здесь
+    # Получаем данные о выбранной теме
+    conn = create_connection(DB_FILE)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT content FROM topics WHERE id = ?", (topic_id,))
+        topic_content = cursor.fetchone()
+
+        cursor.execute("SELECT COUNT(*) FROM user_dictionary WHERE topic_id = ?", (topic_id,))
+        word_count = cursor.fetchone()[0]
+
+        if topic_content:
+            topic_name = topic_content[0]
+            message_text = f"*{topic_name}*\nКоличество слов: {word_count}"
+
+            # Создание инлайн-кнопок
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="Добавить слова", callback_data=f"add_words:{topic_id}"),
+                 InlineKeyboardButton(text="Удалить тему", callback_data=f"delete_topic:{topic_id}")]
+            ])
+
+            await bot.send_message(callback_query.from_user.id, message_text, reply_markup=kb, parse_mode='Markdown')
+        else:
+            await bot.send_message(callback_query.from_user.id, "Тема не найдена.")
+    except sqlite3.Error as e:
+        logging.error(f"Database error: {e}")
+        await bot.send_message(callback_query.from_user.id, "Произошла ошибка при получении данных.")
+    finally:
+        conn.close()
+
+@dp.message(F.text)
+async def handle_any_text(message: types.Message, state: FSMContext) -> None:
+    current_state = await state.get_state()
+    if current_state is not None:  # Если состояние активно
+        await state.clear()  # Сбрасываем состояние
+        await message.answer("Текущее действие отменено. Выберите новое действие.")
+
+    # Проверка на команду
+    if is_command(message.text):
+        await message.answer("Вы не можете использовать названия команд в качестве аргументов.")
+        return
 
 # Обработка текста для добавления слова
-@dp.message(State(Form.waiting_for_word))
+@dp.message(State(F.state == Form.waiting_for_word))
 async def process_word(message: types.Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     word = message.text
 
+    if is_command(word):
+        await message.answer("Вы не можете использовать названия команд в качестве аргументов.")
+        return
+
     # Сохранение введенного слова и ожидание перевода
     await state.update_data(word_to_add=word)
     await message.answer("Введите перевод слова:")
-    await state.set_state(Form.waiting_for_translation.state)  # Исправление здесь
+    await state.set_state(Form.waiting_for_translation.state)
 
 # Обработка текста для добавления перевода
-@dp.message(State(Form.waiting_for_translation))
+@dp.message(State(F.state == Form.waiting_for_translation))
 async def process_translation(message: types.Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     translation = message.text
     data = await state.get_data()
     word = data.get('word_to_add')
     topic_id = data.get('selected_topic_id')
+
+    if is_command(translation):
+        await message.answer("Вы не можете использовать названия команд в качестве аргументов.")
+        return
 
     add_word_to_user_topic(user_id, topic_id, word, translation)
 
@@ -298,6 +340,34 @@ async def process_translation(message: types.Message, state: FSMContext) -> None
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message) -> None:
     await message.answer("Это бот для изучения английского языка. Используйте команды и кнопки для добавления тем и слов.")
+
+# Обработка команды /start
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"Received /start command from {message.from_user.id}")
+
+    button = InlineKeyboardButton(text="Начать обучение!", callback_data="start_learning")
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button]])
+
+    await message.answer("Добро пожаловать! Нажмите кнопку ниже, чтобы начать изучение:", reply_markup=keyboard)
+
+    try:
+        first_name = message.from_user.first_name
+        last_name = message.from_user.last_name
+
+        if first_name and last_name:
+            full_name = f"{first_name} {last_name}"
+        elif first_name:
+            full_name = first_name
+        elif last_name:
+            full_name = last_name
+        else:
+            full_name = ""
+
+        upsert_user(message.from_user.id, message.from_user.username or '', full_name)
+        logging.info(f"User data updated for {message.from_user.id}")
+    except Exception as e:
+        logging.error(f"Error while updating user data: {e}")
 
 # Запуск бота
 async def main() -> None:
