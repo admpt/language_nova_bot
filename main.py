@@ -10,7 +10,7 @@ import asyncio
 import logging
 import sys
 
-from bot_token import API_TOKEN
+from token_of_bot import API_TOKEN
 
 TOKEN = API_TOKEN
 DB_FILE = 'database.db'
