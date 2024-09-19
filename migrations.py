@@ -42,10 +42,10 @@ def upgrade_to_v1(conn: Connection) -> None:
         cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS user_dictionary (
                 user_id INTEGER NOT NULL,
-                topic_name TEXT NOT NULL,
+                topic_id INTEGER NOT NULL,
                 word TEXT NOT NULL,
                 translation TEXT NOT NULL,
-                PRIMARY KEY (user_id, topic_name, word),
+                PRIMARY KEY (user_id, topic_id, word),
                 FOREIGN KEY (user_id) REFERENCES users (user_id)
             )
         """)

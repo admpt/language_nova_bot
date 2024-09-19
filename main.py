@@ -4,7 +4,8 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, InlineQueryResultArticle, \
+    InputTextMessageContent, KeyboardButton
 import asyncio
 import logging
 import sys
@@ -36,6 +37,17 @@ class Form(StatesGroup):
     waiting_for_topic_name = State()
     waiting_for_word = State()
     waiting_for_translation = State()
+
+@dp.message(F.text == "Отменить действие")
+async def cancel_action(message: types.Message, state: FSMContext) -> None:
+    await state.clear()  # Сбрасываем состояние
+    # kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb = [
+        [(types.KeyboardButton(text="Изучение слов"))],
+        [(types.KeyboardButton(text="Профиль"))]
+        ]
+    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await message.answer("Вы отменили текущее действие. Что вы хотите сделать дальше?", reply_markup=keyboard)
 
 # Функция для проверки на наличие команд
 def is_command(text: str) -> bool:
@@ -88,7 +100,7 @@ def add_user_topic(author_id: int, content: str, visible: int) -> None:
         conn.close()
 
 # Функция для добавления слова в выбранную тему
-def add_word_to_user_topic(user_id: int, topic_id: int, word: str, translation: str) -> None:
+async def add_word_to_user_topic(user_id: int, topic_id: int, word: str, translation: str, state: FSMContext) -> None:
     conn = create_connection(DB_FILE)
     try:
         cursor = conn.cursor()
@@ -97,6 +109,7 @@ def add_word_to_user_topic(user_id: int, topic_id: int, word: str, translation: 
                        """, (user_id, topic_id, word, translation))
         update_learned_words_count(user_id)
         conn.commit()
+        await state.clear()
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
     finally:
@@ -164,16 +177,26 @@ async def learning(message: types.Message) -> None:
 @dp.message(F.text == "Добавить тему")
 async def add_topic_prompt(message: types.Message, state: FSMContext) -> None:
     await state.clear()  # Сбрасываем состояние перед установкой нового
-    await message.answer("Введите название темы:")
+    kb = [
+        [(KeyboardButton(text="Отменить действие"))],
+    ]
+    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await message.answer("Введите название темы:", reply_markup=keyboard)
     await state.set_state(Form.waiting_for_topic_name.state)
-    logging.info(f"Состояние установлено: {state}")
+
 
 # Обработка текста для добавления темы
 @dp.message(Form.waiting_for_topic_name)
 async def process_add_topic(message: types.Message, state: FSMContext) -> None:
-    logging.info("Обработчик для ожидания названия темы сработал.")
     author_id = message.from_user.id
-    content = message.text.strip()
+    content = message.text
+
+    # if message.text == "Отменить действие":
+    #     async def cancel_action(message: types.Message, state: FSMContext) -> None:
+    #         await state.clear()  # Сбрасываем состояние
+    #         kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    #         kb.add(types.KeyboardButton("Изучение слов"), types.KeyboardButton("Профиль"))  # Главные меню
+    #         await message.answer("Вы отменили текущее действие. Что вы хотите сделать дальше?", reply_markup=kb)
 
     if is_command(message.text):
         await message.answer("Вы не можете использовать команды в качестве названий тем.")
@@ -228,7 +251,14 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
         )
         for item in results
     ]
-
+    if not items:
+        items = [
+            InlineQueryResultArticle(
+                id="no_results",
+                title="Нет доступных тем",
+                input_message_content=InputTextMessageContent(message_text="Не найдено тем по вашему запросу.")
+            )
+        ]
     # Отправка результатов
     await bot.answer_inline_query(inline_query.id, results=items)
 
@@ -250,9 +280,9 @@ async def choose_topic(message: types.Message, state: FSMContext) -> None:
 # Обработка выбора темы из inline клавиатуры
 @dp.callback_query(lambda c: c.data.startswith('select_topic_'))
 async def process_topic_selection_callback(callback_query: types.CallbackQuery, state: FSMContext) -> None:
-    topic_id = int(callback_query.data[len('select_topic_'):])
+    topic_id = callback_query.data.split("_")[-1]
     await bot.answer_callback_query(callback_query.id)
-
+    await callback_query.answer(f"Вы выбрали тему с ID: {topic_id}")
     # Получаем данные о выбранной теме
     conn = create_connection(DB_FILE)
     cursor = conn.cursor()
@@ -283,25 +313,14 @@ async def process_topic_selection_callback(callback_query: types.CallbackQuery, 
     finally:
         conn.close()
 
-@dp.message(F.text)
-async def handle_any_text(message: types.Message, state: FSMContext) -> None:
-    current_state = await state.get_state()
-    if current_state is not None:  # Если состояние активно
-        await state.clear()  # Сбрасываем состояние
-        await message.answer("Текущее действие отменено. Выберите новое действие.")
-
-    # Проверка на команду
-    if is_command(message.text):
-        await message.answer("Вы не можете использовать названия команд в качестве аргументов.")
-        return
-
 # Обработка текста для добавления слова
-@dp.message(State(F.state == Form.waiting_for_word))
-async def process_word(message: types.Message, state: FSMContext) -> None:
-    user_id = message.from_user.id
+@dp.message(F.state == Form.waiting_for_word | F.state == Form.waiting_for_translation)
+async def handle_word_translation(message: types.Message, state: FSMContext) -> None:
+    current_state = await state.get_state()
     word = message.text
 
-    if is_command(word):
+    # Проверяем, если сообщение является командой
+    if is_command(message.text):
         await message.answer("Вы не можете использовать названия команд в качестве аргументов.")
         return
 
@@ -311,7 +330,7 @@ async def process_word(message: types.Message, state: FSMContext) -> None:
     await state.set_state(Form.waiting_for_translation.state)
 
 # Обработка текста для добавления перевода
-@dp.message(State(F.state == Form.waiting_for_translation))
+@dp.message(F.state.in_(Form.waiting_for_translation))
 async def process_translation(message: types.Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     translation = message.text
@@ -319,13 +338,15 @@ async def process_translation(message: types.Message, state: FSMContext) -> None
     word = data.get('word_to_add')
     topic_id = data.get('selected_topic_id')
 
+    if not topic_id:
+        await message.answer("Ошибка: не выбрана тема для добавления слова.")
+        return
+
     if is_command(translation):
         await message.answer("Вы не можете использовать названия команд в качестве аргументов.")
         return
 
-    add_word_to_user_topic(user_id, topic_id, word, translation)
-
-    # Очистка контекста пользователя
+    await add_word_to_user_topic(user_id, topic_id, word, translation, state)
     await state.clear()
 
     kb = [
@@ -344,6 +365,7 @@ async def cmd_help(message: types.Message) -> None:
 # Обработка команды /start
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
+    await state.clear()  # Сбрасываем состояние перед началом
     logging.info(f"Received /start command from {message.from_user.id}")
 
     button = InlineKeyboardButton(text="Начать обучение!", callback_data="start_learning")
@@ -351,23 +373,24 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
 
     await message.answer("Добро пожаловать! Нажмите кнопку ниже, чтобы начать изучение:", reply_markup=keyboard)
 
+    # Обновляем данные пользователя
     try:
         first_name = message.from_user.first_name
         last_name = message.from_user.last_name
 
-        if first_name and last_name:
-            full_name = f"{first_name} {last_name}"
-        elif first_name:
-            full_name = first_name
-        elif last_name:
-            full_name = last_name
-        else:
-            full_name = ""
+        full_name = f"{first_name} {last_name}" if first_name and last_name else first_name or last_name or ""
 
         upsert_user(message.from_user.id, message.from_user.username or '', full_name)
         logging.info(f"User data updated for {message.from_user.id}")
     except Exception as e:
         logging.error(f"Error while updating user data: {e}")
+
+@dp.message(F.text)
+async def handle_any_text(message: types.Message, state: FSMContext) -> None:
+    current_state = await state.get_state()
+    if current_state is not None:  # Если состояние активно
+        await state.clear()  # Сбрасываем состояние
+        await message.answer("Текущее действие отменено. Выберите новое действие.")
 
 # Запуск бота
 async def main() -> None:
