@@ -1,5 +1,7 @@
 import sqlite3
 from sqlite3 import Connection
+
+import aiosqlite
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -124,8 +126,10 @@ def update_learned_words_count(user_id: int) -> None:
         learned_words_count = cursor.fetchone()[0]
         cursor.execute("""UPDATE users SET learned_words_count = ? WHERE user_id = ?""", (learned_words_count, user_id))
         conn.commit()
+        return learned_words_count
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
+        return 0
     finally:
         conn.close()
 
@@ -191,13 +195,6 @@ async def process_add_topic(message: types.Message, state: FSMContext) -> None:
     author_id = message.from_user.id
     content = message.text
 
-    # if message.text == "Отменить действие":
-    #     async def cancel_action(message: types.Message, state: FSMContext) -> None:
-    #         await state.clear()  # Сбрасываем состояние
-    #         kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    #         kb.add(types.KeyboardButton("Изучение слов"), types.KeyboardButton("Профиль"))  # Главные меню
-    #         await message.answer("Вы отменили текущее действие. Что вы хотите сделать дальше?", reply_markup=kb)
-
     if is_command(message.text):
         await message.answer("Вы не можете использовать команды в качестве названий тем.")
         return
@@ -262,6 +259,8 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
     # Отправка результатов
     await bot.answer_inline_query(inline_query.id, results=items)
 
+
+
 # Обработка нажатия на кнопку "Выбрать тему"
 @dp.message(F.text == "Выбрать тему")
 async def choose_topic(message: types.Message, state: FSMContext) -> None:
@@ -282,29 +281,33 @@ async def choose_topic(message: types.Message, state: FSMContext) -> None:
 async def process_topic_selection_callback(callback_query: types.CallbackQuery, state: FSMContext) -> None:
     topic_id = callback_query.data.split("_")[-1]
     await bot.answer_callback_query(callback_query.id)
-    await callback_query.answer(f"Вы выбрали тему с ID: {topic_id}")
-    # Получаем данные о выбранной теме
+
+    logging.info(f"Callback received: {callback_query.data}")
+    logging.info(f"Selected topic ID: {topic_id}")
+
     conn = create_connection(DB_FILE)
     cursor = conn.cursor()
 
     try:
         cursor.execute("SELECT content FROM topics WHERE id = ?", (topic_id,))
         topic_content = cursor.fetchone()
+        logging.info(f"Fetched topic content: {topic_content}")
 
         cursor.execute("SELECT COUNT(*) FROM user_dictionary WHERE topic_id = ?", (topic_id,))
         word_count = cursor.fetchone()[0]
+        logging.info(f"Word count for topic ID {topic_id}: {word_count}")
 
         if topic_content:
             topic_name = topic_content[0]
             message_text = f"*{topic_name}*\nКоличество слов: {word_count}"
 
-            # Создание инлайн-кнопок
+            await bot.send_message(callback_query.from_user.id, message_text, parse_mode='Markdown')
+
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="Добавить слова", callback_data=f"add_words:{topic_id}"),
                  InlineKeyboardButton(text="Удалить тему", callback_data=f"delete_topic:{topic_id}")]
             ])
-
-            await bot.send_message(callback_query.from_user.id, message_text, reply_markup=kb, parse_mode='Markdown')
+            await bot.send_message(callback_query.from_user.id, "Что вы хотите сделать дальше?", reply_markup=kb)
         else:
             await bot.send_message(callback_query.from_user.id, "Тема не найдена.")
     except sqlite3.Error as e:
@@ -312,6 +315,7 @@ async def process_topic_selection_callback(callback_query: types.CallbackQuery, 
         await bot.send_message(callback_query.from_user.id, "Произошла ошибка при получении данных.")
     finally:
         conn.close()
+
 
 # Обработка текста для добавления слова
 @dp.message(F.state == Form.waiting_for_word | F.state == Form.waiting_for_translation)
@@ -384,6 +388,42 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         logging.info(f"User data updated for {message.from_user.id}")
     except Exception as e:
         logging.error(f"Error while updating user data: {e}")
+
+
+async def get_user_data(user_id: int):
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute(
+                "SELECT full_name, elite_status, learned_words_count FROM users WHERE user_id = ?",
+                (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            if row:
+                return row[0], row[1], row[2]
+            else:
+                return None, None, None, 0  # Вернём 0 для изученных слов, если пользователь не найден
+
+
+##############################################################################################
+
+@dp.message(F.text == "Профиль")
+async def check_profile(message: types.Message, state: FSMContext) -> None:
+    await state.clear()
+    user_id = message.from_user.id
+    first_name = message.from_user.first_name
+    last_name = message.from_user.last_name
+    full_name, elite_status, learned_words_count = await get_user_data(user_id)
+
+    full_name = f"{first_name} {last_name}" if first_name and last_name else first_name or last_name or "Пользователь"
+
+    elite_status_text = "Элитный" if elite_status == "Yes" else "Free"  # Пример обработки статуса
+
+    await message.answer(
+        f"Имя: [{full_name}](tg://user?id={user_id})\n\nИзученные слова: {learned_words_count}\nСтатус: {elite_status_text}",
+        parse_mode='Markdown',
+    )
+
+
+##############################################################################################
+
 
 @dp.message(F.text)
 async def handle_any_text(message: types.Message, state: FSMContext) -> None:
