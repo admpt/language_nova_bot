@@ -361,10 +361,14 @@ async def process_translation(message: types.Message, state: FSMContext) -> None
 
     await message.answer(f"Вы успешно добавили слово '{word}' в тему с ID '{topic_id}'!", reply_markup=keyboard)
 
+########################################################################################################################
+
 # Обработка команды /help
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message) -> None:
     await message.answer("Это бот для изучения английского языка. Используйте команды и кнопки для добавления тем и слов.")
+
+########################################################################################################################
 
 # Обработка команды /start
 @dp.message(Command("start"))
@@ -389,6 +393,53 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     except Exception as e:
         logging.error(f"Error while updating user data: {e}")
 
+########################################################################################################################
+
+async def get_top_users() -> list:
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute(
+                "SELECT user_id, full_name, learned_words_count FROM users ORDER BY learned_words_count DESC LIMIT 15"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return rows
+
+# @dp.callback_query(F.data == "top_leaders")
+# async def top_users(message: types.Message, callback_query: types.CallbackQuery, state: FSMContext) -> None:
+#     top_users = await get_top_users()
+#
+#     if not top_users:
+#         await callback_query.message.answer("Топ-15 пользователей отсутствует.")
+#         return
+#     first_name = message.from_user.first_name
+#     last_name = message.from_user.last_name
+#     response = "*Top-15 пользователей по изученным словам:*\n\n"
+#     for idx, (user_id, full_name, learned_words_count) in enumerate(top_users, start=1):
+#         full_name = f"{first_name} {last_name}" if first_name and last_name else first_name or last_name or "Пользователь"
+#         user_link = f"[{full_name}](tg://user?id={user_id})"  # Форматируем ссылку
+#         response += f"{idx}. {user_link} - {learned_words_count} слов\n"
+#
+#     response = response.replace(".", "\\.").replace("-", "\\-")
+#     (await callback_query.message.answer(response, parse_mode='MarkdownV2')
+
+@dp.callback_query(F.data == "top_leaders")
+async def top_users(callback_query: types.CallbackQuery, state: FSMContext) -> None:
+    rows = await get_top_users()
+
+    if not rows:
+        await callback_query.answer("Топ-15 пользователей отсутствует.")
+        return
+
+    response = "*Top-15 пользователей по изученным словам:*\n\n"
+    for idx, (user_id, full_name, learned_words_count) in enumerate(rows, start=1):
+        user_link = f"[{full_name}](tg://user?id={user_id})"  # Форматируем ссылку
+        response += f"{idx}. {user_link} - {learned_words_count} слов\n"
+
+    response = response.replace(".", "\\.").replace("-", "\\-")
+
+    await callback_query.message.answer(response, parse_mode='MarkdownV2')
+
+
+########################################################################################################################
 
 async def get_user_data(user_id: int):
     async with aiosqlite.connect("database.db") as db:
@@ -401,9 +452,7 @@ async def get_user_data(user_id: int):
             else:
                 return None, None, None, 0  # Вернём 0 для изученных слов, если пользователь не найден
 
-
-##############################################################################################
-
+# функция для кнопки "Профиль"
 @dp.message(F.text == "Профиль")
 async def check_profile(message: types.Message, state: FSMContext) -> None:
     await state.clear()
@@ -414,23 +463,25 @@ async def check_profile(message: types.Message, state: FSMContext) -> None:
 
     full_name = f"{first_name} {last_name}" if first_name and last_name else first_name or last_name or "Пользователь"
 
-    elite_status_text = "Элитный" if elite_status == "Yes" else "Free"  # Пример обработки статуса
+    elite_status_text = " 💎Элитный" if elite_status == "Yes" else " 🆓Free"  # Пример обработки статуса
+
+    button = InlineKeyboardButton(text="Leaders Page", callback_data="top_leaders")
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button]])
 
     await message.answer(
         f"Имя: [{full_name}](tg://user?id={user_id})\n\nИзученные слова: {learned_words_count}\nСтатус: {elite_status_text}",
-        parse_mode='Markdown',
+        parse_mode='Markdown', reply_markup=keyboard
     )
+########################################################################################################################
 
-
-##############################################################################################
-
-
+# функция обработки простого текста
 @dp.message(F.text)
 async def handle_any_text(message: types.Message, state: FSMContext) -> None:
     current_state = await state.get_state()
     if current_state is not None:  # Если состояние активно
         await state.clear()  # Сбрасываем состояние
         await message.answer("Текущее действие отменено. Выберите новое действие.")
+########################################################################################################################
 
 # Запуск бота
 async def main() -> None:
