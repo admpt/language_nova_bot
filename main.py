@@ -170,8 +170,8 @@ async def learning(message: types.Message) -> None:
     user_id = message.from_user.id
 
     kb = [
-        [types.KeyboardButton(text="Добавить тему")],
-        [types.KeyboardButton(text="Добавить слова")]
+        [KeyboardButton(text="Добавить тему"), KeyboardButton(text="Добавить слова")],
+        [KeyboardButton(text="🔙Назад")]
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
@@ -201,12 +201,25 @@ async def process_add_topic(message: types.Message, state: FSMContext) -> None:
 
     if content:
         add_user_topic(author_id, content, 0)
-        await message.answer("Вы успешно добавили тему! Что вы хотите сделать дальше?")
+        kb = [
+            [KeyboardButton(text="Добавить тему"), KeyboardButton(text="Добавить слова")],
+            [KeyboardButton(text="🔙Назад")]
+        ]
+        keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        await message.answer("Вы успешно добавили тему! Что вы хотите сделать дальше?", reply_markup=keyboard)
         await state.clear()
-        logging.info(f"Тема '{content}' добавлена пользователем {author_id}. Состояние сброшено.")
     else:
         await message.answer("Название темы не может быть пустым.")
         logging.warning(f"Пользователь {author_id} ввел пустое название темы.")
+
+@dp.message(F.text == "🔙Назад")
+async def go_back(message: types.Message, state: FSMContext) -> None:
+    kb = [
+        [types.KeyboardButton(text="Изучение слов")],
+        [types.KeyboardButton(text="Профиль")]
+    ]
+    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await message.answer("Вы вернулись в главное меню.", reply_markup=keyboard)
 
 # Обработка команды "Добавить слова"
 @dp.message(F.text == "Добавить слова")
@@ -429,7 +442,7 @@ async def top_users(callback_query: types.CallbackQuery, state: FSMContext) -> N
         await callback_query.answer("Топ-15 пользователей отсутствует.")
         return
 
-    response = "*Top-15 пользователей по изученным словам:*\n\n"
+    response = "*🔝Top-15 пользователей по изученным словам:*\n\n"
     for idx, (user_id, full_name, learned_words_count) in enumerate(rows, start=1):
         user_link = f"[{full_name}](tg://user?id={user_id})"  # Форматируем ссылку
         response += f"{idx}. {user_link} - {learned_words_count} слов\n"
@@ -465,7 +478,7 @@ async def check_profile(message: types.Message, state: FSMContext) -> None:
 
     elite_status_text = " 💎Элитный" if elite_status == "Yes" else " 🆓Free"  # Пример обработки статуса
 
-    button = InlineKeyboardButton(text="Leaders Page", callback_data="top_leaders")
+    button = InlineKeyboardButton(text="🏆Leaders Page", callback_data="top_leaders")
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[button]])
 
     await message.answer(
