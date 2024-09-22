@@ -50,7 +50,7 @@ def upgrade_to_v1(conn: Connection) -> None:
             )
         """)
 
-    # Создаем таблицу `topics` с указанными полями
+    # Создаем таблицу `topics`
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='topics';")
     table_exists = cursor.fetchone()
 
@@ -62,6 +62,24 @@ def upgrade_to_v1(conn: Connection) -> None:
                 content TEXT NOT NULL,
                 visible INTEGER DEFAULT 0 CHECK(visible IN (0, 1)),
                 FOREIGN KEY (author_id) REFERENCES users (user_id)
+            )
+        """)
+
+    # Создаем таблицу `irregular_verbs`
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='irregular_verbs';")
+    table_exists = cursor.fetchone()
+
+    if not table_exists:
+        cursor.execute(""" 
+            CREATE TABLE IF NOT EXISTS irregular_verbs (
+                v1 TEXT NOT NULL,
+                v2_first TEXT NOT NULL,
+                v2_second TEXT DEFAULT NULL,
+                v3_first TEXT NOT NULL,
+                v3_second TEXT DEFAULT NULL,
+                first_translation TEXT NOT NULL,
+                second_translation TEXT DEFAULT NULL,
+                third_translation TEXT DEFAULT NULL
             )
         """)
 
