@@ -130,10 +130,10 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
     await inline_query_handler(inline_query)
 
 # Обработка выбора темы из inline клавиатуры
-@dp.callback_query(lambda c: c.data.startswith('select_topic_'))
-async def process_topic_selection_callback(callback_query: types.CallbackQuery, state: FSMContext) -> None:
-    from functions.add_words import process_topic_selection_callback
-    await process_start_learning(callback_query, state)
+@dp.message(lambda message: message.text.startswith("Вы выбрали тему:"))
+async def process_topic_selection(message: types.Message) -> None:
+    from functions.add_words import process_topic_selection
+    await process_topic_selection(message)
 
 # Обработка текста для добавления слова
 @dp.message(F.state == Form.waiting_for_word | F.state == Form.waiting_for_translation)

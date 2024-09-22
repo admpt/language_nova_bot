@@ -23,52 +23,11 @@ async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
     ])
     await message.answer("Выберите тему из предложенных:", reply_markup=kb)
 
-# @dp.inline_query()
-# async def inline_query_handler(inline_query: types.InlineQuery) -> None:
-#     query = inline_query.query.strip()
-#     user_id = inline_query.from_user.id
-#
-#     # Подключение к базе данных
-#     conn = sqlite3.connect(DB_FILE)
-#     cursor = conn.cursor()
-#
-#     try:
-#         # Поиск тем по запросу, используя столбец `content`
-#         cursor.execute("""SELECT id, content
-#                           FROM topics
-#                           WHERE (author_id = ? OR visible = 1) AND content LIKE ?
-#                        """, (user_id, f'%{query}%'))
-#         results = cursor.fetchall()
-#     except sqlite3.OperationalError as e:
-#         logging.error(f"Database error: {e}")
-#         results = []
-#     finally:
-#         conn.close()
-#
-#     # Формирование результатов
-#     items = [
-#         InlineQueryResultArticle(
-#             id=str(item[0]),
-#             title=item[1],
-#             input_message_content=InputTextMessageContent(message_text=f"Вы выбрали тему: {item[1]}")
-#         )
-#         for item in results
-#     ]
-#     if not items:
-#         items = [
-#             InlineQueryResultArticle(
-#                 id="no_results",
-#                 title="Нет доступных тем",
-#                 input_message_content=InputTextMessageContent(message_text="Не найдено тем по вашему запросу.")
-#             )
-#         ]
-#     # Отправка результатов
-#     await bot.answer_inline_query(inline_query.id, results=items)
+
 @dp.inline_query()
 async def inline_query_handler(inline_query: types.InlineQuery) -> None:
     query = inline_query.query.strip()
     user_id = inline_query.from_user.id
-    # Подключение к базе данных
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
@@ -76,36 +35,21 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
         # Поиск тем по запросу
         cursor.execute("""SELECT id, content
                           FROM topics
-                          WHERE (author_id = ? OR visible = 1) AND content LIKE ?
-                       """, (user_id, f'%{query}%'))
+                          WHERE (author_id = ? OR visible = 1) AND content LIKE ?""",
+                       (user_id, f'%{query}%'))
         results = cursor.fetchall()
-        # Формирование результатов
+
         items = [
             InlineQueryResultArticle(
                 id=str(item[0]),
                 title=item[1],
-                input_message_content=InputTextMessageContent(message_text=f"Вы выбрали тему: {item[1]}")
+                input_message_content=InputTextMessageContent(
+                    message_text=f"Вы выбрали тему: {item[1]}"
+                )
             )
             for item in results
         ]
-        # Если нет тем, добавляем сообщение о пустых темах
-        if not items:
-            cursor.execute("""SELECT id, content
-                              FROM topics
-                              WHERE author_id = ? AND content LIKE ?
-                           """, (user_id, f'%{query}%'))
-            empty_results = cursor.fetchall()
-            if empty_results:
-                for item in empty_results:
-                    items.append(
-                        InlineQueryResultArticle(
-                            id=str(item[0]),
-                            title=item[1],
-                            input_message_content=InputTextMessageContent(
-                                message_text=f"Вы выбрали тему: {item[1]}\n(в теме пока нет слов)")
-                        )
-                    )
-        # Если все равно нет результатов, сообщаем об этом
+
         if not items:
             items = [
                 InlineQueryResultArticle(
@@ -114,6 +58,7 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
                     input_message_content=InputTextMessageContent(message_text="Не найдено тем по вашему запросу.")
                 )
             ]
+
         # Отправка результатов
         await bot.answer_inline_query(inline_query.id, results=items)
 
@@ -122,6 +67,41 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
         await bot.answer_inline_query(inline_query.id, results=[])
     finally:
         conn.close()
+
+# Обработка выбранной темы сразу после инлайн-запроса
+@dp.message(lambda message: message.text.startswith("Вы выбрали тему:"))
+async def process_topic_selection(message: types.Message) -> None:
+    topic_name = message.text.split(": ", 1)[-1]
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    try:
+        # Получаем ID темы по имени
+        cursor.execute("SELECT id FROM topics WHERE content = ?", (topic_name,))
+        topic = cursor.fetchone()
+
+        if topic:
+            topic_id = topic[0]
+            cursor.execute("SELECT COUNT(*) FROM user_dictionary WHERE topic_id = ?", (topic_id,))
+            word_count = cursor.fetchone()[0]
+
+            message_text = f"Название темы*{topic_name}*\nКоличество слов: {word_count}" if word_count > 0 else f"*{topic_name}*\nКоличество слов: 0"
+
+            # Дальнейшие действия
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="Добавить слова", callback_data=f"add_words:{topic_id}"),
+                 InlineKeyboardButton(text="Удалить тему", callback_data=f"delete_topic:{topic_id}")]
+            ])
+            await message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
+        else:
+            await message.answer("Тема не найдена.")
+    except sqlite3.Error as e:
+        logging.error(f"Database error: {e}")
+        await message.answer("Произошла ошибка при получении данных.")
+    finally:
+        conn.close()
+
 
 
 # Функция для создания соединения с базой данных
@@ -194,49 +174,6 @@ async def search_user_topics(user_id: int, query: str) -> list:
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
         return []
-    finally:
-        conn.close()
-
-# Обработка выбора темы из inline клавиатуры
-@dp.callback_query(lambda c: c.data.startswith('select_topic_'))
-async def process_topic_selection_callback(callback_query: types.CallbackQuery, state: FSMContext) -> None:
-    logging.info("Callback handler triggered")
-    topic_id = callback_query.data.split("_")[-1]
-    await bot.answer_callback_query(callback_query.id)
-
-    # Логируем, что мы получили topic_id
-    logging.info(f"Selected topic ID: {topic_id}")
-
-    conn = create_connection(DB_FILE)
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute("SELECT content FROM topics WHERE id = ?", (topic_id,))
-        topic_content = cursor.fetchone()
-        logging.info(f"Fetched topic content: {topic_content}")
-
-        # Получение количества слов
-        cursor.execute("SELECT COUNT(*) FROM user_dictionary WHERE topic_id = ?", (topic_id,))
-        word_count = cursor.fetchone()[0]
-        logging.info(f"Word count for topic ID {topic_id}: {word_count}")
-
-        if topic_content:
-            topic_name = topic_content[0]
-            message_text = f"*{topic_name}*\nКоличество слов: {word_count}" if word_count > 0 else f"*{topic_name}*\nКоличество слов: 0 (в теме пока нет слов)"
-
-            logging.info("Sending message with topic details")
-            await bot.send_message(callback_query.from_user.id, message_text, parse_mode='Markdown')
-
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Добавить слова", callback_data=f"add_words:{topic_id}"),
-                 InlineKeyboardButton(text="Удалить тему", callback_data=f"delete_topic:{topic_id}")]
-            ])
-            await bot.send_message(callback_query.from_user.id, "Что вы хотите сделать дальше?", reply_markup=kb)
-        else:
-            await bot.send_message(callback_query.from_user.id, "Тема не найдена.")
-    except sqlite3.Error as e:
-        logging.error(f"Database error: {e}")
-        await bot.send_message(callback_query.from_user.id, "Произошла ошибка при получении данных.")
     finally:
         conn.close()
 
