@@ -68,14 +68,15 @@ async def top_users(callback_query: types.CallbackQuery, state: FSMContext) -> N
     await callback_query.message.answer(response, parse_mode='MarkdownV2')
 
 # Функция для обновления количества изученных слов
-async def update_learned_words_count(user_id: int) -> None:
+async def update_learned_words_count(user_id: int) -> int:
     conn = create_connection(DB_FILE)
     try:
         cursor = conn.cursor()
-        cursor.execute("""SELECT COUNT(*) FROM user_dictionary WHERE user_id = ?""", (user_id,))
+        cursor.execute("SELECT COUNT(*) FROM user_dictionary WHERE user_id = ?", (user_id,))
         learned_words_count = cursor.fetchone()[0]
-        cursor.execute("""UPDATE users SET learned_words_count = ? WHERE user_id = ?""", (learned_words_count, user_id))
+        cursor.execute("UPDATE users SET learned_words_count = ? WHERE user_id = ?", (learned_words_count, user_id))
         conn.commit()
+        logging.info(f"Updated learned_words_count for user {user_id}: {learned_words_count}")
         return learned_words_count
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")

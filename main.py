@@ -81,7 +81,7 @@ async def add_word_to_user_topic(user_id: int, topic_id: int, word: str, transla
 
 
 # Функция для обновления количества изученных слов
-async def update_learned_words_count(user_id: int) -> None:
+async def update_learned_words_count(user_id: int) -> int:
     from functions.profile import update_learned_words_count
     await update_learned_words_count(user_id)
 

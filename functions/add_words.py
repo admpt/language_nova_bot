@@ -111,7 +111,7 @@ async def process_topic_selection(message: types.Message) -> None:
             cursor.execute("SELECT COUNT(*) FROM user_dictionary WHERE topic_id = ?", (topic_id,))
             word_count = cursor.fetchone()[0]
 
-            message_text = f"Название темы*{topic_name}*\nКоличество слов: {word_count}" if word_count > 0 else f"*{topic_name}*\nКоличество слов: 0"
+            message_text = f"Название темы: *{topic_name}*\nКоличество слов: {word_count}" if word_count > 0 else f"*{topic_name}*\nКоличество слов: 0"
 
             # Дальнейшие действия
             kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -166,10 +166,22 @@ async def upsert_user(user_id: int, username_tg: str, full_name: str, balance: i
 async def add_words_callback(callback_query: types.CallbackQuery, state: FSMContext):
     topic_id = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
-    logging.info("Выбор темы для добавления слов")
-    await state.update_data(selected_topic_id=topic_id)
-    await callback_query.message.answer("Введите слово на английском:")
-    await state.set_state(Form.waiting_for_word)
+
+    # Получаем название темы из базы данных
+    conn = create_connection(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT content FROM topics WHERE id = ?", (topic_id,))
+    topic_name = cursor.fetchone()
+
+    if topic_name:
+        topic_name = topic_name[0]  # Получаем строку из кортежа
+
+        # Сохраняем ID и название темы в состоянии
+        await state.update_data(selected_topic_id=topic_id, selected_topic_name=topic_name)
+        await callback_query.message.answer("Введите слово на английском:")
+        await state.set_state(Form.waiting_for_word)
+    else:
+        await callback_query.answer("Тема не найдена.")
 
 # Обработка текста для добавления слова
 @dp.message(Form.waiting_for_word)
@@ -192,7 +204,10 @@ async def add_word_to_user_topic(user_id: int, topic_id: int, word: str, transla
         cursor = conn.cursor()
         cursor.execute("""INSERT INTO user_dictionary (user_id, topic_id, word, translation)
                           VALUES (?, ?, ?, ?)""", (user_id, topic_id, word, translation))
-        await update_learned_words_count(user_id)  # Обновляем количество изученных слов
+
+        # Обновляем количество изученных слов
+        await update_learned_words_count(user_id)
+
         conn.commit()
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
@@ -207,8 +222,9 @@ async def process_translation(message: types.Message, state: FSMContext) -> None
     data = await state.get_data()
     word = data.get('word_to_add')
     topic_id = data.get('selected_topic_id')
+    topic_name = data.get('selected_topic_name')  # Получаем название темы
 
-    logging.info(f"Получен перевод: {translation} для слова: {word} в теме с ID: {topic_id}")
+    logging.info(f"Получен перевод: {translation} для слова: {word} в теме '{topic_name}' с ID: {topic_id}")
 
     if not topic_id:
         await message.answer("Ошибка: не выбрана тема для добавления слова.")
@@ -217,8 +233,9 @@ async def process_translation(message: types.Message, state: FSMContext) -> None
     if is_command(translation):
         await message.answer("Вы не можете использовать названия команд в качестве аргументов.")
         return
-
+    await update_learned_words_count(user_id)
     await add_word_to_user_topic(user_id, topic_id, word, translation)
     await state.clear()  # Очищаем состояние после добавления
-
-    await message.answer(f"Вы успешно добавили слово '{word}' с переводом '{translation}' в тему с ID '{topic_id}'!")
+    await update_learned_words_count(user_id)
+    message_text = f'Слово *"{word}"* с переводом *"{translation}"* успешно добавлено в тему *"{topic_name}"*!'
+    await message.answer(message_text, parse_mode='Markdown')
