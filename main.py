@@ -153,14 +153,19 @@ async def process_topic_selection(message: types.Message) -> None:
     from functions.add_words import process_topic_selection
     await process_topic_selection(message)
 
+@dp.callback_query(lambda c: c.data.startswith("add_words:"))
+async def add_words_callback(callback_query: types.CallbackQuery, state: FSMContext):
+    from functions.add_words import add_words_callback
+    await add_words_callback(callback_query, state)
+
 # Обработка текста для добавления слова
-@dp.message(F.state == Form.waiting_for_word | F.state == Form.waiting_for_translation)
+@dp.message(Form.waiting_for_word)
 async def handle_word_translation(message: types.Message, state: FSMContext) -> None:
-    from functions.add_words import handle_word_translation
-    await handle_word_translation(message, state)
+    from functions.add_words import handle_word_input
+    await handle_word_input(message, state)
 
 # Обработка текста для добавления перевода
-@dp.message(F.state.in_(Form.waiting_for_translation))
+@dp.message(Form.waiting_for_translation)
 async def process_translation(message: types.Message, state: FSMContext) -> None:
     from functions.add_words import process_translation
     await process_translation(message, state)

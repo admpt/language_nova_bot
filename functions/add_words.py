@@ -6,6 +6,7 @@ from aiogram import F, types, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent, \
     ReplyKeyboardMarkup
+from pyexpat.errors import messages
 
 from main import DB_FILE, update_learned_words_count, Form, is_command
 from token_of_bot import API_TOKEN
@@ -13,6 +14,30 @@ from token_of_bot import API_TOKEN
 TOKEN = API_TOKEN
 from main import dp
 bot = Bot(token=TOKEN)
+
+
+# Функция для поиска тем пользователя
+async def search_user_topics(user_id: int, query: str) -> list:
+    conn = create_connection(DB_FILE)
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute("""SELECT id, content 
+                          FROM topics 
+                          WHERE (author_id = ? OR visible = 1) 
+                          AND content LIKE ?""", (user_id, f"%{query}%"))
+
+        results = cursor.fetchall()
+
+        # Логируем результаты поиска
+        logging.info(f"Found topics: {results}")
+
+        return results
+    except sqlite3.Error as e:
+        logging.error(f"Database error: {e}")
+        return []
+    finally:
+        conn.close()
 
 # Обработка команды "Добавить слова"
 @dp.message(F.text == "Добавить слова")
@@ -135,73 +160,55 @@ async def upsert_user(user_id: int, username_tg: str, full_name: str, balance: i
     finally:
         conn.close()
 
+
+
+@dp.callback_query(lambda c: c.data.startswith("add_words:"))
+async def add_words_callback(callback_query: types.CallbackQuery, state: FSMContext):
+    topic_id = callback_query.data.split(":")[1]
+    user_id = callback_query.from_user.id
+    logging.info("Выбор темы для добавления слов")
+    await state.update_data(selected_topic_id=topic_id)
+    await callback_query.message.answer("Введите слово на английском:")
+    await state.set_state(Form.waiting_for_word)
+
+# Обработка текста для добавления слова
+@dp.message(Form.waiting_for_word)
+async def handle_word_input(message: types.Message, state: FSMContext) -> None:
+    word = message.text.strip()
+    logging.info(f"Получено слово: {word}")
+
+    if is_command(word):
+        await message.answer("Вы не можете использовать названия команд в качестве аргументов.")
+        return
+
+    await state.update_data(word_to_add=word)
+    await message.answer("Введите перевод слова:")
+    await state.set_state(Form.waiting_for_translation)
+
 # Функция для добавления слова в выбранную тему
-async def add_word_to_user_topic(user_id: int, topic_id: int, word: str, translation: str, state: FSMContext) -> None:
+async def add_word_to_user_topic(user_id: int, topic_id: int, word: str, translation: str) -> None:
     conn = create_connection(DB_FILE)
     try:
         cursor = conn.cursor()
         cursor.execute("""INSERT INTO user_dictionary (user_id, topic_id, word, translation)
-                          VALUES (?, ?, ?, ?)
-                       """, (user_id, topic_id, word, translation))
-        await update_learned_words_count(user_id)
+                          VALUES (?, ?, ?, ?)""", (user_id, topic_id, word, translation))
+        await update_learned_words_count(user_id)  # Обновляем количество изученных слов
         conn.commit()
-        await state.clear()
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
     finally:
         conn.close()
-
-# Функция для поиска тем пользователя
-async def search_user_topics(user_id: int, query: str) -> list:
-    conn = create_connection(DB_FILE)
-    try:
-        cursor = conn.cursor()
-
-        # Логируем, что мы ищем темы
-        logging.info(f"Searching topics for user {user_id} with query: {query}")
-
-        cursor.execute("""SELECT id, content 
-                          FROM topics 
-                          WHERE (author_id = ? OR visible = 1) 
-                          AND content LIKE ?""", (user_id, f"%{query}%"))
-
-        results = cursor.fetchall()
-
-        # Логируем результаты поиска
-        logging.info(f"Found topics: {results}")
-
-        return results
-    except sqlite3.Error as e:
-        logging.error(f"Database error: {e}")
-        return []
-    finally:
-        conn.close()
-
-
-# Обработка текста для добавления слова
-@dp.message(F.state == Form.waiting_for_word | F.state == Form.waiting_for_translation)
-async def handle_word_translation(message: types.Message, state: FSMContext) -> None:
-    current_state = await state.get_state()
-    word = message.text
-
-    # Проверяем, если сообщение является командой
-    if is_command(message.text):
-        await message.answer("Вы не можете использовать названия команд в качестве аргументов.")
-        return
-
-    # Сохранение введенного слова и ожидание перевода
-    await state.update_data(word_to_add=word)
-    await message.answer("Введите перевод слова:")
-    await state.set_state(Form.waiting_for_translation.state)
 
 # Обработка текста для добавления перевода
-@dp.message(F.state.in_(Form.waiting_for_translation))
+@dp.message(Form.waiting_for_translation)
 async def process_translation(message: types.Message, state: FSMContext) -> None:
+    translation = message.text.strip()
     user_id = message.from_user.id
-    translation = message.text
     data = await state.get_data()
     word = data.get('word_to_add')
     topic_id = data.get('selected_topic_id')
+
+    logging.info(f"Получен перевод: {translation} для слова: {word} в теме с ID: {topic_id}")
 
     if not topic_id:
         await message.answer("Ошибка: не выбрана тема для добавления слова.")
@@ -211,13 +218,7 @@ async def process_translation(message: types.Message, state: FSMContext) -> None
         await message.answer("Вы не можете использовать названия команд в качестве аргументов.")
         return
 
-    await add_word_to_user_topic(user_id, topic_id, word, translation, state)
-    await state.clear()
+    await add_word_to_user_topic(user_id, topic_id, word, translation)
+    await state.clear()  # Очищаем состояние после добавления
 
-    kb = [
-        [types.KeyboardButton(text="Добавить тему")],
-        [types.KeyboardButton(text="Добавить слова")]
-    ]
-    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-
-    await message.answer(f"Вы успешно добавили слово '{word}' в тему с ID '{topic_id}'!", reply_markup=keyboard)
+    await message.answer(f"Вы успешно добавили слово '{word}' с переводом '{translation}' в тему с ID '{topic_id}'!")

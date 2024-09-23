@@ -2,7 +2,7 @@ import sqlite3
 
 from aiogram import types, Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 import logging
 from token_of_bot import API_TOKEN
 
@@ -38,8 +38,7 @@ async def process_start_learning(callback_query: types.CallbackQuery) -> None:
     await bot.answer_callback_query(callback_query.id)
 
     kb = [
-        [types.KeyboardButton(text="Словарь")],
-        [types.KeyboardButton(text="Профиль")]
+        [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")]
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
