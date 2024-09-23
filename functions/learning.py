@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from main import dp
 
 
-@dp.message(F.text == "Изучение слов")
+@dp.message(F.text == "Словарь")
 async def learning(message: types.Message) -> None:
     user_id = message.from_user.id
 

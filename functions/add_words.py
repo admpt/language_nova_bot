@@ -21,7 +21,7 @@ async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Выбрать тему", switch_inline_query_current_chat="")]
     ])
-    await message.answer("Выберите тему из предложенных:", reply_markup=kb)
+    await message.answer("Выберите тему из предложенных:\nДоделать описание", reply_markup=kb)
 
 
 @dp.inline_query()

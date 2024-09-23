@@ -30,7 +30,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 COMMANDS = [
     "/start",
     "/help",
-    "Изучение слов",
+    "Словарь",
     "Добавить тему",
     "Добавить слова",
     "Выбрать тему"
@@ -67,25 +67,36 @@ async def upsert_user(user_id: int, username_tg: str, full_name: str, balance: i
     from functions.start_command import upsert_user
     await upsert_user(user_id, username_tg, full_name, balance, elite_status, learned_words_count)
 
+
 # Функция для добавления темы в базу данных (с привязкой к пользователю)
 async def add_user_topic(author_id: int, content: str, visible: int) -> None:
     from functions.add_topic import add_user_topic
     await add_user_topic(author_id, content, visible)
+
 
 # Функция для добавления слова в выбранную тему
 async def add_word_to_user_topic(user_id: int, topic_id: int, word: str, translation: str, state: FSMContext) -> None:
     from functions.add_topic import add_word_to_user_topic
     await add_word_to_user_topic(user_id, topic_id, word, translation, state)
 
+
 # Функция для обновления количества изученных слов
 async def update_learned_words_count(user_id: int) -> None:
     from functions.profile import update_learned_words_count
     await update_learned_words_count(user_id)
 
+
+# Функция для обновления количества созданных тем
+async def update_learned_topics_count(user_id: int) -> None:
+    from functions.profile import update_learned_topics_count
+    await update_learned_topics_count(user_id)
+
+
 # Функция для поиска тем пользователя
 async def search_user_topics(user_id: int, query: str) -> list:
     from functions.add_words import search_user_topics
     await search_user_topics(user_id, query)
+
 
 # Обработка нажатия на кнопку "Начать обучение!"
 @dp.callback_query(lambda c: c.data == 'start_learning')
@@ -93,11 +104,18 @@ async def process_start_learning(callback_query: types.CallbackQuery) -> None:
     from functions.start_command import process_start_learning
     await process_start_learning(callback_query)
 
-# Обработка внутренностей "Изучение слов"
-@dp.message(F.text == "Изучение слов")
+
+# Обработка внутренностей "Словарь"
+@dp.message(F.text == "Словарь")
 async def learning(message: types.Message) -> None:
     from functions.learning import learning
     await learning(message)
+
+# Проверяет, существует ли тема с заданным названием
+async def is_topic_exists(author_id: int, content: str) -> bool:
+    from functions.add_topic import is_topic_exists
+    await is_topic_exists(author_id, content)
+
 
 # Обработка нажатия на кнопку "Добавить тему"
 @dp.message(F.text == "Добавить тему")

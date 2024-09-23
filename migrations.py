@@ -20,6 +20,11 @@ def upgrade_to_v1(conn: Connection) -> None:
         # Добавляем столбец `learned_words_count`, если его нет
         if 'learned_words_count' not in columns:
             cursor.execute("ALTER TABLE users ADD COLUMN learned_words_count INTEGER DEFAULT 0;")
+
+        # Добавляем столбец `topics_count`, если его нет
+        if 'topics_count' not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN topics_count INTEGER DEFAULT 0;")
+
     else:
         # Если таблицы нет, создаем её
         cursor.execute(""" 
