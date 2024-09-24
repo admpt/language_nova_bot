@@ -153,6 +153,7 @@ async def process_topic_selection(message: types.Message) -> None:
     from functions.add_words import process_topic_selection
     await process_topic_selection(message)
 
+# Обработка нажатия на инлайн-кнопку "Добавить слово"
 @dp.callback_query(lambda c: c.data.startswith("add_words:"))
 async def add_words_callback(callback_query: types.CallbackQuery, state: FSMContext):
     from functions.add_words import add_words_callback
@@ -169,6 +170,24 @@ async def handle_word_translation(message: types.Message, state: FSMContext) -> 
 async def process_translation(message: types.Message, state: FSMContext) -> None:
     from functions.add_words import process_translation
     await process_translation(message, state)
+
+# Обработка нажатия на инлайн-кнопку "Удалить тему"
+@dp.callback_query(lambda c: c.data.startswith("delete_topic:"))
+async def delete_topic_callback(callback_query: types.CallbackQuery):
+    from functions.add_words import delete_topic_callback
+    await delete_topic_callback(callback_query)
+
+# Обработка подтверждения удаления темы
+@dp.callback_query(lambda c: c.data.startswith("confirm_delete:"))
+async def confirm_delete_topic(callback_query: types.CallbackQuery):
+    from functions.add_words import confirm_delete_topic
+    await confirm_delete_topic(callback_query)
+
+# Обработка отмены удаления темы
+@dp.callback_query(lambda c: c.data == "cancel_delete")
+async def cancel_delete_topic(callback_query: types.CallbackQuery):
+    from functions.add_words import cancel_delete_topic
+    await cancel_delete_topic(callback_query)
 
 # Обработка команды /help
 @dp.message(Command("help"))

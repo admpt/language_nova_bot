@@ -8,7 +8,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQuer
     ReplyKeyboardMarkup
 from pyexpat.errors import messages
 
-from main import DB_FILE, update_learned_words_count, Form, is_command
+from main import DB_FILE, update_learned_words_count, Form, is_command, update_learned_topics_count
 from token_of_bot import API_TOKEN
 
 TOKEN = API_TOKEN
@@ -115,7 +115,7 @@ async def process_topic_selection(message: types.Message) -> None:
 
             # Дальнейшие действия
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Добавить слова", callback_data=f"add_words:{topic_id}"),
+                [InlineKeyboardButton(text="Добавить слово", callback_data=f"add_words:{topic_id}"),
                  InlineKeyboardButton(text="Удалить тему", callback_data=f"delete_topic:{topic_id}")]
             ])
             await message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
@@ -239,3 +239,63 @@ async def process_translation(message: types.Message, state: FSMContext) -> None
     await update_learned_words_count(user_id)
     message_text = f'Слово *"{word}"* с переводом *"{translation}"* успешно добавлено в тему *"{topic_name}"*!'
     await message.answer(message_text, parse_mode='Markdown')
+
+
+@dp.callback_query(lambda c: c.data.startswith("delete_topic:"))
+async def delete_topic_callback(callback_query: types.CallbackQuery):
+    topic_id = callback_query.data.split(":")[1]
+    user_id = callback_query.from_user.id
+
+    # Получаем название темы для подтверждения
+    conn = create_connection(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT content FROM topics WHERE id = ?", (topic_id,))
+    topic = cursor.fetchone()
+
+    if topic:
+        topic_name = topic[0]
+
+        # Предлагаем подтвердить удаление
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Да", callback_data=f"confirm_delete:{topic_id}"),
+             InlineKeyboardButton(text="Нет", callback_data="cancel_delete")]
+        ])
+        await callback_query.message.answer(f'Вы уверены, что хотите удалить тему "{topic_name}" и все связанные с ней слова?',
+                                    reply_markup=kb)
+    else:
+        await callback_query.answer("Тема не найдена.")
+    conn.close()
+
+
+@dp.callback_query(lambda c: c.data.startswith("confirm_delete:"))
+async def confirm_delete_topic(callback_query: types.CallbackQuery):
+    topic_id = callback_query.data.split(":")[1]
+    user_id = callback_query.from_user.id
+    conn = create_connection(DB_FILE)
+    cursor = conn.cursor()
+    await update_learned_words_count(user_id)
+    await update_learned_topics_count(user_id)
+    try:
+        # Удаляем все слова, связанные с темой
+        cursor.execute("DELETE FROM user_dictionary WHERE topic_id = ?", (topic_id,))
+
+        # Удаляем тему
+        cursor.execute("DELETE FROM topics WHERE id = ?", (topic_id,))
+        conn.commit()
+
+        await callback_query.message.answer("Тема и все связанные слова успешно удалены.")
+        await update_learned_words_count(user_id)
+        await update_learned_topics_count(user_id)
+    except sqlite3.Error as e:
+        logging.error(f"Database error: {e}")
+        await callback_query.message.answer("Произошла ошибка при удалении темы.")
+    finally:
+        conn.close()
+
+
+@dp.callback_query(lambda c: c.data == "cancel_delete")
+async def cancel_delete_topic(callback_query: types.CallbackQuery):
+    await callback_query.message.answer("Удаление темы отменено.")
+    user_id = callback_query.from_user.id
+    await update_learned_words_count(user_id)
+    await update_learned_topics_count(user_id)
