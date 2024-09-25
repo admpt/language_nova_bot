@@ -43,19 +43,19 @@ async def search_user_topics(user_id: int, query: str) -> list:
 @dp.message(F.text == "Добавить слова")
 async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
     await state.clear()  # Сбрасываем состояние
+    command = "поиск темы для добавления слов: "
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Выбрать тему", switch_inline_query_current_chat="")]
+        [InlineKeyboardButton(text="Выбрать тему", switch_inline_query_current_chat=command)]
     ])
     await message.answer("Выберите тему из предложенных:\nДоделать описание", reply_markup=kb)
 
 
-@dp.inline_query()
+@dp.inline_query(F.query.startswith("поиск темы для добавления слов: "))
 async def inline_query_handler(inline_query: types.InlineQuery) -> None:
-    query = inline_query.query.strip()
+    query = inline_query.query[len("поиск темы для добавления слов: "):].strip()  # Убираем команду
     user_id = inline_query.from_user.id
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-
     try:
         # Поиск тем по запросу
         cursor.execute("""SELECT id, content
@@ -95,7 +95,7 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
 
 # Обработка выбранной темы сразу после инлайн-запроса
 @dp.message(lambda message: message.text.startswith("Вы выбрали тему:"))
-async def process_topic_selection(message: types.Message) -> None:
+async def process_topic_selection(message: types.Message, state: FSMContext) -> None:
     topic_name = message.text.split(": ", 1)[-1]
 
     conn = sqlite3.connect(DB_FILE)
@@ -119,6 +119,7 @@ async def process_topic_selection(message: types.Message) -> None:
                  InlineKeyboardButton(text="Удалить тему", callback_data=f"delete_topic:{topic_id}")]
             ])
             await message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
+            await state.clear()
         else:
             await message.answer("Тема не найдена.")
     except sqlite3.Error as e:

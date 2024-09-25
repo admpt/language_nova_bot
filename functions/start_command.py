@@ -38,7 +38,8 @@ async def process_start_learning(callback_query: types.CallbackQuery) -> None:
     await bot.answer_callback_query(callback_query.id)
 
     kb = [
-        [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")]
+        [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
+        [KeyboardButton(text="Повторение слов")]
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 

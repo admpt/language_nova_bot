@@ -12,6 +12,7 @@ async def learning(message: types.Message) -> None:
 
     kb = [
         [KeyboardButton(text="Добавить тему"), KeyboardButton(text="Добавить слова")],
+        [KeyboardButton(text="Повторение слов")],
         [KeyboardButton(text="🔙Назад")]
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)

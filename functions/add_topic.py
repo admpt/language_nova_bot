@@ -54,7 +54,8 @@ async def process_add_topic(message: types.Message, state: FSMContext) -> None:
 @dp.message(F.text == "🔙Назад")
 async def go_back(message: types.Message, state: FSMContext) -> None:
     kb = [
-        [types.KeyboardButton(text="Словарь"), types.KeyboardButton(text="Профиль")]
+        [types.KeyboardButton(text="Словарь"), types.KeyboardButton(text="Профиль")],
+        [types.KeyboardButton(text='Повторение слов')]
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await message.answer("Вы вернулись в главное меню.", reply_markup=keyboard)

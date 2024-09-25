@@ -142,16 +142,16 @@ async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
     from functions.add_words import add_words_prompt
     await add_words_prompt(message, state)
 
-@dp.inline_query()
+@dp.inline_query(F.query.startswith("поиск темы для добавления слов: "))
 async def inline_query_handler(inline_query: types.InlineQuery) -> None:
     from functions.add_words import inline_query_handler
     await inline_query_handler(inline_query)
 
 # Обработка выбора темы из inline клавиатуры
 @dp.message(lambda message: message.text.startswith("Вы выбрали тему:"))
-async def process_topic_selection(message: types.Message) -> None:
+async def process_topic_selection(message: types.Message, state: FSMContext) -> None:
     from functions.add_words import process_topic_selection
-    await process_topic_selection(message)
+    await process_topic_selection(message, state)
 
 # Обработка нажатия на инлайн-кнопку "Добавить слово"
 @dp.callback_query(lambda c: c.data.startswith("add_words:"))
@@ -210,6 +210,47 @@ async def handle_top_leaders(callback_query: types.CallbackQuery, state: FSMCont
 async def handle_profile(message: types.Message, state: FSMContext):
     from functions.profile import check_profile  # Отложенный импорт
     await check_profile(message, state)  # Вызываем обработчик
+
+
+# Обработка текстового сообщения "Повторение слов"
+@dp.message(F.text == "Повторение слов")
+async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
+    from functions.repeat_words import repeat_words
+    await repeat_words(message, state)
+
+@dp.inline_query(F.query.startswith("поиск тем для повторения: "))
+async def inline_query_handler_repeat(inline_query: types.InlineQuery) -> None:
+    from functions.repeat_words import inline_query_handler_repeat
+    await inline_query_handler_repeat(inline_query)
+
+# Обработка выбранной темы сразу после инлайн-запроса
+@dp.message(lambda message: message.text.startswith("Для повторения была выбрана тема:"))
+async def process_topic_selection_repeat(message: types.Message, state: FSMContext) -> None:
+    from functions.repeat_words import process_topic_selection_repeat
+    await process_topic_selection_repeat(message, state)
+
+# Состояние для хранения текущего слова
+@dp.callback_query(lambda c: c.data.startswith("eng_ru:"))
+async def start_eng_ru_translation(callback_query: types.CallbackQuery, state: FSMContext):
+    from functions.repeat_words import start_eng_ru_translation
+    await start_eng_ru_translation(callback_query, state)
+
+# Обработка текстового сообщения "Прекратить повтор"
+@dp.message(F.text == "Прекратить повтор")
+async def stop_translation(message: types.Message, state: FSMContext):
+    from functions.repeat_words import stop_translation
+    await stop_translation(message, state)
+
+
+async def ask_for_translation(message: types.Message, user_id: int, topic_id: int, state: FSMContext):
+    from functions.repeat_words import ask_for_translation
+    await ask_for_translation(message, user_id, topic_id, state)
+
+# Обработка текстового сообщения перевода
+@dp.message(lambda message: message.text.strip() != "Прекратить повтор")
+async def check_translation(message: types.Message, state: FSMContext):
+    from functions.repeat_words import check_translation
+    await check_translation(message, state)
 
 # функция обработки простого текста
 @dp.message(F.text)
