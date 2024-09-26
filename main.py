@@ -253,7 +253,7 @@ async def ask_for_ru_translation(message: types.Message, user_id: int, topic_id:
     await ask_for_ru_translation(message, user_id, topic_id, state)
 
 # Обработка текстового сообщения перевода
-@dp.message(lambda message: message.text.strip() != "Прекратить повтор", F.state == TranslationStates.ENG_RU)
+@dp.message(lambda message: message.text.strip() != "Прекратить повтор" and F.state == TranslationStates.ENG_RU)
 async def check_eng_ru_translation(message: types.Message, state: FSMContext):
     from functions.repeat_words import check_eng_ru_translation
     await check_eng_ru_translation(message, state)

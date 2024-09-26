@@ -120,14 +120,12 @@ async def stop_translation(message: types.Message, state: FSMContext):
 # Состояние для хранения текущего слова
 @dp.callback_query(lambda c: c.data.startswith("eng_ru:"))
 async def start_eng_ru_translation(callback_query: types.CallbackQuery, state: FSMContext):
-    await state.clear()
     topic_id = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
-    # Сохраняем тему в состоянии
-    await state.update_data(topic_id=topic_id)
-    await state.set_state(TranslationStates.ENG_RU)  # Устанавливаем состояние
-    await ask_for_ru_translation(callback_query.message, user_id, topic_id, state)
 
+    await state.update_data(topic_id=topic_id)
+    await state.set_state(TranslationStates.ENG_RU)
+    await ask_for_ru_translation(callback_query.message, user_id, topic_id, state)
 
 async def ask_for_ru_translation(message: types.Message, user_id: int, topic_id: int, state: FSMContext):
     conn = sqlite3.connect(DB_FILE)
@@ -137,8 +135,7 @@ async def ask_for_ru_translation(message: types.Message, user_id: int, topic_id:
                        (topic_id, user_id))
         words = cursor.fetchall()
         if words:
-            word, translation = random.choice(words)  # Случайное слово
-            # Создаем клавиатуру для прекращения повторений
+            word, translation = random.choice(words)
             stop_kb = ReplyKeyboardMarkup(
                 keyboard=[[KeyboardButton(text="Прекратить повтор")]]
             )
@@ -157,7 +154,9 @@ async def check_eng_ru_translation(message: types.Message, state: FSMContext):
     data = await state.get_data()
     current_translation = data.get('current_translation')
 
-    if current_translation and message.text.strip().lower() == current_translation.lower():
+    logging.info(f"User input: '{message.text.strip().lower()}', Expected: '{current_translation.lower()}'")
+
+    if current_translation and message.text.strip().lower() == current_translation.strip().lower():
         await message.answer("Правильно!")
         await ask_for_ru_translation(message, message.from_user.id, data.get('topic_id'), state)
     else:
@@ -168,6 +167,19 @@ async def check_eng_ru_translation(message: types.Message, state: FSMContext):
 
 
 
+# @dp.message(lambda message: message.text.strip() != "Прекратить повтор" and F.state == TranslationStates.RU_ENG)
+# async def check_ru_eng_translation(message: types.Message, state: FSMContext):
+#     data = await state.get_data()
+#     current_word = data.get('current_word')  # Это английское слово
+#
+#     if current_word and message.text.strip().lower() == current_word.lower():
+#         await message.answer("Правильно!")
+#         await ask_for_eng_translation(message, message.from_user.id, data.get('topic_id'), state)
+#     else:
+#         stop_kb = ReplyKeyboardMarkup(
+#             keyboard=[[KeyboardButton(text="Прекратить повтор")]]
+#         )
+#         await message.answer("Неправильно. Попробуйте еще раз.", reply_markup=stop_kb, resize_keyboard=True)
 
 
 
