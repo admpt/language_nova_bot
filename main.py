@@ -36,6 +36,10 @@ COMMANDS = [
     "Выбрать тему"
 ]
 
+class TranslationStates(StatesGroup):
+    ENG_RU = State()
+    RU_ENG = State()
+
 # Состояния пользователя
 class Form(StatesGroup):
     waiting_for_topic_name = State()
@@ -229,6 +233,8 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
     from functions.repeat_words import process_topic_selection_repeat
     await process_topic_selection_repeat(message, state)
 
+
+
 # Состояние для хранения текущего слова
 @dp.callback_query(lambda c: c.data.startswith("eng_ru:"))
 async def start_eng_ru_translation(callback_query: types.CallbackQuery, state: FSMContext):
@@ -242,23 +248,39 @@ async def stop_translation(message: types.Message, state: FSMContext):
     await stop_translation(message, state)
 
 
-async def ask_for_translation(message: types.Message, user_id: int, topic_id: int, state: FSMContext):
-    from functions.repeat_words import ask_for_translation
-    await ask_for_translation(message, user_id, topic_id, state)
+async def ask_for_ru_translation(message: types.Message, user_id: int, topic_id: int, state: FSMContext):
+    from functions.repeat_words import ask_for_ru_translation
+    await ask_for_ru_translation(message, user_id, topic_id, state)
 
 # Обработка текстового сообщения перевода
-@dp.message(lambda message: message.text.strip() != "Прекратить повтор")
-async def check_translation(message: types.Message, state: FSMContext):
-    from functions.repeat_words import check_translation
-    await check_translation(message, state)
+@dp.message(lambda message: message.text.strip() != "Прекратить повтор", F.state == TranslationStates.ENG_RU)
+async def check_eng_ru_translation(message: types.Message, state: FSMContext):
+    from functions.repeat_words import check_eng_ru_translation
+    await check_eng_ru_translation(message, state)
+
+@dp.callback_query(lambda c: c.data.startswith("ru_eng:"))
+async def start_ru_eng_translation(callback_query: types.CallbackQuery, state: FSMContext):
+    from functions.repeat_words import start_ru_eng_translation
+    await start_ru_eng_translation(callback_query, state)
+
+async def ask_for_eng_translation1(message: types.Message, user_id: int, topic_id: int, state: FSMContext):
+    from functions.repeat_words import ask_for_eng_translation
+    await ask_for_eng_translation(message, user_id, topic_id, state)
+
+@dp.message(lambda message: message.text.strip() != "Прекратить повтор" and F.state == TranslationStates.RU_ENG)
+async def check_ru_eng_translation(message: types.Message, state: FSMContext):
+    from functions.repeat_words import check_ru_eng_translation
+    await check_ru_eng_translation(message, state)
 
 # функция обработки простого текста
 @dp.message(F.text)
 async def handle_any_text(message: types.Message, state: FSMContext) -> None:
     current_state = await state.get_state()
-    if current_state is not None:  # Если состояние активно
+
+    if current_state is not None and current_state != TranslationStates.ENG_RU.state and current_state != TranslationStates.RU_ENG.state:  # Проверка на состояние перевода
         await state.clear()  # Сбрасываем состояние
         await message.answer("Текущее действие отменено. Выберите новое действие.")
+
 
 # Запуск бота
 async def main() -> None:

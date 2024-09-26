@@ -3,9 +3,10 @@ import sqlite3
 
 from aiogram import F, types, Bot
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, \
     InlineQueryResultArticle, InputTextMessageContent
-from main import dp, Form, DB_FILE, TOKEN
+from main import dp, Form, DB_FILE, TOKEN, TranslationStates
 import random
 
 
@@ -103,20 +104,9 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
         conn.close()
 
 
-
-# Состояние для хранения текущего слова
-@dp.callback_query(lambda c: c.data.startswith("eng_ru:"))
-async def start_eng_ru_translation(callback_query: types.CallbackQuery, state: FSMContext):
-    topic_id = callback_query.data.split(":")[1]
-    user_id = callback_query.from_user.id
-
-    # Сохраняем тему в состоянии
-    await state.update_data(topic_id=topic_id)
-    await ask_for_translation(callback_query.message, user_id, topic_id, state)
-
 @dp.message(F.text == "Прекратить повтор")
 async def stop_translation(message: types.Message, state: FSMContext):
-    await state.clear()
+    await state.clear()  # Сбрасываем состояние
     kb = [
         [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
         [KeyboardButton(text="Повторение слов")]
@@ -125,23 +115,33 @@ async def stop_translation(message: types.Message, state: FSMContext):
     await message.answer("Повторение прекращено.", reply_markup=keyboard)
 
 
-async def ask_for_translation(message: types.Message, user_id: int, topic_id: int, state: FSMContext):
+
+
+# Состояние для хранения текущего слова
+@dp.callback_query(lambda c: c.data.startswith("eng_ru:"))
+async def start_eng_ru_translation(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    topic_id = callback_query.data.split(":")[1]
+    user_id = callback_query.from_user.id
+    # Сохраняем тему в состоянии
+    await state.update_data(topic_id=topic_id)
+    await state.set_state(TranslationStates.ENG_RU)  # Устанавливаем состояние
+    await ask_for_ru_translation(callback_query.message, user_id, topic_id, state)
+
+
+async def ask_for_ru_translation(message: types.Message, user_id: int, topic_id: int, state: FSMContext):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-
     try:
         cursor.execute("SELECT word, translation FROM user_dictionary WHERE topic_id = ? AND user_id = ?",
                        (topic_id, user_id))
         words = cursor.fetchall()
-
         if words:
             word, translation = random.choice(words)  # Случайное слово
-
             # Создаем клавиатуру для прекращения повторений
             stop_kb = ReplyKeyboardMarkup(
                 keyboard=[[KeyboardButton(text="Прекратить повтор")]]
             )
-
             await message.answer(f"Слово: *{word}*\nНапишите перевод на русском:", reply_markup=stop_kb, resize_keyboard=True)
             await state.update_data(current_word=word, current_translation=translation)
         else:
@@ -152,19 +152,70 @@ async def ask_for_translation(message: types.Message, user_id: int, topic_id: in
     finally:
         conn.close()
 
-
-@dp.message(lambda message: message.text.strip() != "Прекратить повтор")
-async def check_translation(message: types.Message, state: FSMContext):
+@dp.message(lambda message: message.text.strip() != "Прекратить повтор" and F.state == TranslationStates.ENG_RU)
+async def check_eng_ru_translation(message: types.Message, state: FSMContext):
     data = await state.get_data()
     current_translation = data.get('current_translation')
 
     if current_translation and message.text.strip().lower() == current_translation.lower():
         await message.answer("Правильно!")
-        await ask_for_translation(message, message.from_user.id, data.get('topic_id'), state)
+        await ask_for_ru_translation(message, message.from_user.id, data.get('topic_id'), state)
     else:
-        # Создаем клавиатуру для прекращения повторений
         stop_kb = ReplyKeyboardMarkup(
             keyboard=[[KeyboardButton(text="Прекратить повтор")]]
         )
         await message.answer("Неправильно. Попробуйте еще раз.", reply_markup=stop_kb, resize_keyboard=True)
 
+
+
+
+
+
+@dp.callback_query(lambda c: c.data.startswith("ru_eng:"))
+async def start_ru_eng_translation(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    topic_id = callback_query.data.split(":")[1]
+    user_id = callback_query.from_user.id
+    await state.update_data(topic_id=topic_id)
+    await state.set_state(TranslationStates.RU_ENG)
+    await ask_for_eng_translation(callback_query.message, user_id, topic_id, state)
+
+async def ask_for_eng_translation(message: types.Message, user_id: int, topic_id: int, state: FSMContext):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT translation, word FROM user_dictionary WHERE topic_id = ? AND user_id = ?",
+                       (topic_id, user_id))
+        words = cursor.fetchall()
+
+        if words:
+            translation, word = random.choice(words)  # translation - русское, word - английское
+
+            stop_kb = ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton(text="Прекратить повтор")]]
+            )
+
+            await message.answer(f"Слово: *{translation}*\nНапишите перевод на английском:", reply_markup=stop_kb, resize_keyboard=True)
+            await state.update_data(current_word=word, current_translation=translation)
+        else:
+            await message.answer("В этой теме нет слов.")
+    except sqlite3.Error as e:
+        logging.error(f"Database error: {e}")
+        await message.answer("Произошла ошибка при получении слов.")
+    finally:
+        conn.close()
+
+@dp.message(lambda message: message.text.strip() != "Прекратить повтор" and F.state == TranslationStates.RU_ENG)
+async def check_ru_eng_translation(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    current_word = data.get('current_word')  # Это английское слово
+
+    if current_word and message.text.strip().lower() == current_word.lower():
+        await message.answer("Правильно!")
+        await ask_for_eng_translation(message, message.from_user.id, data.get('topic_id'), state)
+    else:
+        stop_kb = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="Прекратить повтор")]]
+        )
+        await message.answer("Неправильно. Попробуйте еще раз.", reply_markup=stop_kb, resize_keyboard=True)
