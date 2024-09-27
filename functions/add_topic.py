@@ -54,8 +54,9 @@ async def process_add_topic(message: types.Message, state: FSMContext) -> None:
 @dp.message(F.text == "🔙Назад")
 async def go_back(message: types.Message, state: FSMContext) -> None:
     kb = [
-        [types.KeyboardButton(text="Словарь"), types.KeyboardButton(text="Профиль")],
-        [types.KeyboardButton(text='Повторение слов')]
+        [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
+        [KeyboardButton(text="Повторение слов")],
+        [KeyboardButton(text="Грамматика")],
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await message.answer("Вы вернулись в главное меню.", reply_markup=keyboard)
@@ -65,8 +66,9 @@ async def go_back(message: types.Message, state: FSMContext) -> None:
 async def cancel_action(message: types.Message, state: FSMContext) -> None:
     await state.clear()
     kb = [
-        [(types.KeyboardButton(text="Изучение слов"))],
-        [(types.KeyboardButton(text="Профиль"))]
+        [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
+        [KeyboardButton(text="Повторение слов")],
+        [KeyboardButton(text="Грамматика")],
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await message.answer("Вы отменили текущее действие. Что вы хотите сделать дальше?", reply_markup=keyboard)

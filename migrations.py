@@ -74,6 +74,13 @@ def upgrade_to_v1(conn: Connection) -> None:
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='irregular_verbs';")
     table_exists = cursor.fetchone()
 
+    if table_exists:
+        cursor.execute("PRAGMA table_info(irregular_verbs);")
+        columns = [column[1] for column in cursor.fetchall()]
+
+        if 'v1_second' not in columns:  # Проверяем, существует ли столбец
+            cursor.execute("ALTER TABLE irregular_verbs ADD COLUMN v1_second TEXT DEFAULT NULL;")
+
     if not table_exists:
         cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS irregular_verbs (
@@ -89,6 +96,7 @@ def upgrade_to_v1(conn: Connection) -> None:
         """)
 
     conn.commit()
+
 
 def migrate(db_file: str) -> None:
     """Функция для применения миграций"""

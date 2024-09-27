@@ -33,7 +33,8 @@ COMMANDS = [
     "Словарь",
     "Добавить тему",
     "Добавить слова",
-    "Выбрать тему"
+    "Выбрать тему",
+    "Грамматика",
 ]
 
 class TranslationStates(StatesGroup):
@@ -120,6 +121,26 @@ async def is_topic_exists(author_id: int, content: str) -> bool:
     from functions.add_topic import is_topic_exists
     await is_topic_exists(author_id, content)
 
+@dp.message(F.text == "Грамматика")
+async def grammar(message: types.Message, state: FSMContext) -> None:
+    from functions.grammar import grammar
+    await grammar(message, state)
+
+@dp.callback_query(F.data == "irregular_verbs")
+async def handle_irregular_verbs(callback_query: types.CallbackQuery, state: FSMContext):
+    from functions.grammar import handle_irregular_verbs
+    await handle_irregular_verbs(callback_query, state)
+
+# Обработчик инлайн-запроса
+@dp.inline_query(lambda query: query.query.startswith("введите глагол в форме Infinitive: "))
+async def inline_query_handler_irregular(inline_query: types.InlineQuery) -> None:
+    from functions.grammar import inline_query_handler_irregular
+    await inline_query_handler_irregular(inline_query)
+
+@dp.message(lambda message: message.text.startswith("Глагол: "))
+async def process_topic_selection_repeat(message: types.Message, state: FSMContext) -> None:
+    from functions.grammar import process_topic_selection_repeat
+    await process_topic_selection_repeat(message, state)
 
 # Обработка нажатия на кнопку "Добавить тему"
 @dp.message(F.text == "Добавить тему")
@@ -280,7 +301,6 @@ async def handle_any_text(message: types.Message, state: FSMContext) -> None:
     if current_state is not None and current_state != TranslationStates.ENG_RU.state and current_state != TranslationStates.RU_ENG.state:  # Проверка на состояние перевода
         await state.clear()  # Сбрасываем состояние
         await message.answer("Текущее действие отменено. Выберите новое действие.")
-
 
 # Запуск бота
 async def main() -> None:

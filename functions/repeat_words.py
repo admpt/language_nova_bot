@@ -109,9 +109,11 @@ async def stop_translation(message: types.Message, state: FSMContext):
     await state.clear()  # Сбрасываем состояние
     kb = [
         [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
-        [KeyboardButton(text="Повторение слов")]
+        [KeyboardButton(text="Повторение слов")],
+        [KeyboardButton(text="Грамматика")],
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await state.clear()
     await message.answer("Повторение прекращено.", reply_markup=keyboard)
 
 
@@ -154,9 +156,13 @@ async def check_eng_ru_translation(message: types.Message, state: FSMContext):
     data = await state.get_data()
     current_translation = data.get('current_translation')
 
+    if current_translation is None:
+        await message.answer("Ошибка: текущее значение перевода не найдено.")
+        return
+
     logging.info(f"User input: '{message.text.strip().lower()}', Expected: '{current_translation.lower()}'")
 
-    if current_translation and message.text.strip().lower() == current_translation.strip().lower():
+    if message.text.strip().lower() == current_translation.strip().lower():
         await message.answer("Правильно!")
         await ask_for_ru_translation(message, message.from_user.id, data.get('topic_id'), state)
     else:
@@ -165,21 +171,6 @@ async def check_eng_ru_translation(message: types.Message, state: FSMContext):
         )
         await message.answer("Неправильно. Попробуйте еще раз.", reply_markup=stop_kb, resize_keyboard=True)
 
-
-
-# @dp.message(lambda message: message.text.strip() != "Прекратить повтор" and F.state == TranslationStates.RU_ENG)
-# async def check_ru_eng_translation(message: types.Message, state: FSMContext):
-#     data = await state.get_data()
-#     current_word = data.get('current_word')  # Это английское слово
-#
-#     if current_word and message.text.strip().lower() == current_word.lower():
-#         await message.answer("Правильно!")
-#         await ask_for_eng_translation(message, message.from_user.id, data.get('topic_id'), state)
-#     else:
-#         stop_kb = ReplyKeyboardMarkup(
-#             keyboard=[[KeyboardButton(text="Прекратить повтор")]]
-#         )
-#         await message.answer("Неправильно. Попробуйте еще раз.", reply_markup=stop_kb, resize_keyboard=True)
 
 
 
