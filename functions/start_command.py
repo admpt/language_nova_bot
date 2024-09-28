@@ -1,11 +1,11 @@
 import sqlite3
 
-from aiogram import types, Bot, Router
+from aiogram import types, Bot, Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 import logging
 
-from shared import dp, DB_FILE, create_connection
+from shared import dp, DB_FILE, create_connection, TranslationStates
 from token_of_bot import API_TOKEN
 
 TOKEN = API_TOKEN
@@ -15,7 +15,7 @@ start_router = Router()
 
 async def process_start_command(message: types.Message, state: FSMContext, upsert_user) -> None:
     await state.clear()  # Сбрасываем состояние
-    logging.info(f"Received /start command from {message.from_user.id}")
+    logging.info(f"process_start_command {message.from_user.id}")
 
     button = InlineKeyboardButton(text="Начать обучение!", callback_data="start_learning")
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[button]])
@@ -36,6 +36,7 @@ async def process_start_command(message: types.Message, state: FSMContext, upser
 # Обработка нажатия на кнопку "Начать обучение!"
 @start_router.callback_query(lambda c: c.data == 'start_learning')
 async def process_start_learning(callback_query: types.CallbackQuery) -> None:
+    logging.info(f"process_start_learning {callback_query.from_user.id}")
     user_id = callback_query.from_user.id
     await bot.answer_callback_query(callback_query.id)
 
@@ -68,3 +69,14 @@ async def upsert_user(user_id: int, username_tg: str, full_name: str, balance: i
         logging.error(f"Database error: {e}")
     finally:
         conn.close()
+
+
+# функция обработки простого текста
+@start_router.message(F.text)
+async def handle_any_text(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"handle_any_text {message.from_user.id}")
+    current_state = await state.get_state()
+    logging.info(current_state)
+    if current_state is not None and current_state != TranslationStates.ENG_RU.state and current_state != TranslationStates.RU_ENG.state and current_state != TranslationStates.repeat_irregular_verbs.state:  # Проверка на состояние перевода
+        await state.clear()  # Сбрасываем состояние
+        await message.answer("Текущее действие отменено. Выберите новое действие.")

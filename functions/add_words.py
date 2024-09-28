@@ -3,6 +3,7 @@ import sqlite3
 from sqlite3 import Connection
 
 from aiogram import F, types, Bot, Router
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
 
@@ -40,8 +41,9 @@ async def search_user_topics(user_id: int, query: str) -> list:
         conn.close()
 
 # Обработка команды "Добавить слова"
-@add_words_router.message(F.text == "Добавить слова")
+@add_words_router.message(F.text == "Добавить слова", StateFilter(None))
 async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"add_words_prompt {message.from_user.id}")
     await state.clear()  # Сбрасываем состояние
     command = "поиск темы для добавления слов: "
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -50,8 +52,9 @@ async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
     await message.answer("Выберите тему из предложенных:\nДоделать описание", reply_markup=kb)
 
 
-@add_words_router.inline_query(F.query.startswith("поиск темы для добавления слов: "))
+@add_words_router.inline_query(F.query.startswith("поиск темы для добавления слов: "), StateFilter(None))
 async def inline_query_handler(inline_query: types.InlineQuery) -> None:
+    logging.info(f"inline_query_handler {inline_query.from_user.id}")
     query = inline_query.query[len("поиск темы для добавления слов: "):].strip()  # Убираем команду
     user_id = inline_query.from_user.id
     conn = sqlite3.connect(DB_FILE)
@@ -94,8 +97,9 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
         conn.close()
 
 # Обработка выбранной темы сразу после инлайн-запроса
-@add_words_router.message(lambda message: message.text.startswith("Вы выбрали тему:"))
+@add_words_router.message(lambda message: message.text.startswith("Вы выбрали тему:"), StateFilter(None))
 async def process_topic_selection(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"process_topic_selection {message.from_user.id}")
     topic_name = message.text.split(": ", 1)[-1]
 
     conn = sqlite3.connect(DB_FILE)
@@ -153,6 +157,7 @@ async def upsert_user(user_id: int, username_tg: str, full_name: str, balance: i
 
 @add_words_router.callback_query(lambda c: c.data.startswith("add_words:"))
 async def add_words_callback(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"add_words_callback {callback_query.from_user.id}")
     topic_id = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
 
@@ -175,6 +180,7 @@ async def add_words_callback(callback_query: types.CallbackQuery, state: FSMCont
 # Обработка текста для добавления слова
 @add_words_router.message(Form.waiting_for_word)
 async def handle_word_input(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"handle_word_input {message.from_user.id}")
     word = message.text.strip()
     logging.info(f"Получено слово: {word}")
 
@@ -206,6 +212,7 @@ async def add_word_to_user_topic(user_id: int, topic_id: int, word: str, transla
 # Обработка текста для добавления перевода
 @add_words_router.message(Form.waiting_for_translation)
 async def process_translation(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"process_translation {message.from_user.id}")
     translation = message.text.strip()
     user_id = message.from_user.id
     data = await state.get_data()
@@ -232,6 +239,7 @@ async def process_translation(message: types.Message, state: FSMContext) -> None
 
 @add_words_router.callback_query(lambda c: c.data.startswith("delete_topic:"))
 async def delete_topic_callback(callback_query: types.CallbackQuery):
+    logging.info(f"delete_topic_callback {callback_query.from_user.id}")
     topic_id = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
 
@@ -258,6 +266,7 @@ async def delete_topic_callback(callback_query: types.CallbackQuery):
 
 @add_words_router.callback_query(lambda c: c.data.startswith("confirm_delete:"))
 async def confirm_delete_topic(callback_query: types.CallbackQuery):
+    logging.info(f"confirm_delete_topic {callback_query.from_user.id}")
     topic_id = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
     conn = create_connection(DB_FILE)
@@ -284,6 +293,7 @@ async def confirm_delete_topic(callback_query: types.CallbackQuery):
 
 @add_words_router.callback_query(lambda c: c.data == "cancel_delete")
 async def cancel_delete_topic(callback_query: types.CallbackQuery):
+    logging.info(f"cancel_delete_topic {callback_query.from_user.id}")
     await callback_query.message.answer("Удаление темы отменено.")
     user_id = callback_query.from_user.id
     await update_learned_words_count(user_id)

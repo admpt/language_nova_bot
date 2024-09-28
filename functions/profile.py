@@ -3,8 +3,10 @@ import sqlite3
 
 import aiosqlite
 from aiogram import types, F, Router
+from aiogram.filters import StateFilter
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
+from pyexpat.errors import messages
 
 from shared import dp, DB_FILE, create_connection
 
@@ -22,8 +24,9 @@ async def get_user_data(user_id: int):
             else:
                 return None, None, 0, 0 # Вернём 0 для изученных слов, если пользователь не найден
 
-@profile_router.message(F.text == "Профиль")
+@profile_router.message(F.text == "Профиль", StateFilter(None))
 async def check_profile(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"check_profile {message.from_user.id}")
     await state.clear()
     user_id = message.from_user.id
     first_name = message.from_user.first_name
@@ -54,6 +57,7 @@ async def get_top_users() -> list:
 
 @profile_router.callback_query(F.data == "top_leaders")
 async def top_users(callback_query: types.CallbackQuery, state: FSMContext) -> None:
+    logging.info(f"top_users {callback_query.from_user.id}")
     rows = await get_top_users()
 
     if not rows:

@@ -1,16 +1,18 @@
 import logging
 import sqlite3
 
-from aiogram import types, F
+from aiogram import types, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
-from main import is_command, update_learned_topics_count, update_learned_words_count
-from shared import dp, Form, DB_FILE, create_connection
+from shared import dp, Form, DB_FILE, create_connection, is_command, update_learned_topics_count, \
+    update_learned_words_count
 
+add_topic_router = Router()
 
-@dp.message(F.text == "Добавить тему")
+@add_topic_router.message(F.text == "Добавить тему")
 async def add_topic_prompt(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"add_topic_prompt {message.from_user.id}")
     await state.clear()
     kb = [
         [(KeyboardButton(text="Отменить действие"))],
@@ -20,8 +22,9 @@ async def add_topic_prompt(message: types.Message, state: FSMContext) -> None:
     await state.set_state(Form.waiting_for_topic_name.state)
 
 
-@dp.message(Form.waiting_for_topic_name)
+@add_topic_router.message(Form.waiting_for_topic_name)
 async def process_add_topic(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"process_add_topic {message.from_user.id}")
     author_id = message.from_user.id
     content = message.text
 
@@ -51,19 +54,22 @@ async def process_add_topic(message: types.Message, state: FSMContext) -> None:
         logging.warning(f"Пользователь {author_id} ввел пустое название темы.")
 
 
-@dp.message(F.text == "🔙Назад")
+@add_topic_router.message(F.text == "🔙Назад")
 async def go_back(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"go_back {message.from_user.id}")
     kb = [
         [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
         [KeyboardButton(text="Повторение слов")],
         [KeyboardButton(text="Грамматика")],
     ]
+    await state.clear()
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await message.answer("Вы вернулись в главное меню.", reply_markup=keyboard)
 
 
-@dp.message(F.text == "Отменить действие")
+@add_topic_router.message(F.text == "Отменить действие")
 async def cancel_action(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"cancel_action {message.from_user.id}")
     await state.clear()
     kb = [
         [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],

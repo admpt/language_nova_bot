@@ -6,6 +6,7 @@ import sys
 
 from aiogram.fsm.context import FSMContext
 
+from functions.add_topic import add_topic_prompt, add_topic_router
 from functions.add_words import add_words_router
 from functions.grammar import grammar_router
 from functions.learning import learning_router
@@ -32,12 +33,12 @@ COMMANDS = [
     "Прекратить повтор"
 ]
 dp.include_router(profile_router)
-dp.include_router(grammar_router)
-dp.include_router(repeat_words_router)
-dp.include_router(start_router)
 dp.include_router(learning_router)
+dp.include_router(add_topic_router)
 dp.include_router(add_words_router)
-
+dp.include_router(repeat_words_router)
+dp.include_router(grammar_router)
+dp.include_router(start_router)
 
 # Функция для добавления или обновления пользователя в базе данных
 async def upsert_user(user_id: int, username_tg: str, full_name: str, balance: int = 0, elite_status: str = 'No',
@@ -67,16 +68,6 @@ async def search_user_topics(user_id: int, query: str) -> list:
 async def is_topic_exists(author_id: int, content: str) -> bool:
     from functions.add_topic import is_topic_exists
     await is_topic_exists(author_id, content)
-
-
-# функция обработки простого текста
-@dp.message(F.text)
-async def handle_any_text(message: types.Message, state: FSMContext) -> None:
-    current_state = await state.get_state()
-    logging.info(current_state)
-    if current_state is not None and current_state != TranslationStates.ENG_RU.state and current_state != TranslationStates.RU_ENG.state and current_state != TranslationStates.repeat_irregular_verbs.state:  # Проверка на состояние перевода
-        await state.clear()  # Сбрасываем состояние
-        await message.answer("Текущее действие отменено. Выберите новое действие.")
 
 # Запуск бота
 async def main() -> None:

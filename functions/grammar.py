@@ -4,6 +4,7 @@ from uuid import uuid4
 import random
 
 from aiogram import types, F, Bot, Router
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent, \
     ReplyKeyboardMarkup, KeyboardButton
@@ -15,8 +16,9 @@ logging.basicConfig(level=logging.INFO)
 grammar_router = Router()
 
 # Обработчик сообщения "Грамматика"
-@grammar_router.message(F.text=="Грамматика")
+@grammar_router.message(F.text=="Грамматика", StateFilter(None))
 async def grammar(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"grammar {message.from_user.id}")
     await state.clear()  # Сбрасываем состояние
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Irregular Verbs", callback_data='irregular_verbs')]
@@ -27,6 +29,7 @@ async def grammar(message: types.Message, state: FSMContext) -> None:
 # Обработчик callback запроса для "Irregular Verbs"
 @grammar_router.callback_query(F.data == "irregular_verbs")
 async def handle_irregular_verbs(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"handle_irregular_verbs {callback_query.from_user.id}")
     command = "введите глагол в форме Infinitive: "  # Определяем команду
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Неправильные глаголы", switch_inline_query_current_chat=command)],
@@ -42,6 +45,7 @@ async def handle_irregular_verbs(callback_query: types.CallbackQuery, state: FSM
 # Обработчик инлайн-запроса
 @grammar_router.inline_query(lambda query: query.query.startswith("введите глагол в форме Infinitive: "))
 async def inline_query_handler_irregular(inline_query: types.InlineQuery) -> None:
+    logging.info(f"inline_query_handler_irregular {inline_query.from_user.id}")
     command_prefix = "введите глагол в форме Infinitive: "
     query_text = inline_query.query[len(command_prefix):].strip()
 
@@ -94,6 +98,7 @@ async def inline_query_handler_irregular(inline_query: types.InlineQuery) -> Non
 # Обработчик сообщения после выбора глагола
 @grammar_router.message(lambda message: message.text.startswith("Глагол: "))
 async def process_topic_selection_repeat(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"process_topic_selection_repeat {message.from_user.id}")
     await state.clear()
     verb_name = message.text.split(": ", 1)[-1].strip()
 
@@ -172,6 +177,7 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
 
 @grammar_router.callback_query(F.data == "start_repeat_irregular_verbs")
 async def start_repeat_irregular_verbs(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"start_repeat_irregular_verbs {callback_query.from_user.id}")
     await state.clear()
     user_id = callback_query.from_user.id
     await state.set_state(TranslationStates.repeat_irregular_verbs)
@@ -179,6 +185,7 @@ async def start_repeat_irregular_verbs(callback_query: types.CallbackQuery, stat
 
 @grammar_router.message(F.text=='ask_for_irregular_repeat')
 async def ask_for_irregular_repeat(message: types.Message, user_id: int, state: FSMContext):
+    logging.info(f"ask_for_irregular_repeat {message.from_user.id}")
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
@@ -227,9 +234,9 @@ async def ask_for_irregular_repeat(message: types.Message, user_id: int, state: 
         conn.close()
 
 
-@grammar_router.message(lambda message: message.text.strip() != "Прекратить повтор" and TranslationStates.repeat_irregular_verbs)
+@grammar_router.message(lambda message: message.text.strip() != "Прекратить повтор", TranslationStates.repeat_irregular_verbs)
 async def check_repeat_answer(message: types.Message, state: FSMContext):
-
+    logging.info(f"check_repeat_answer {message.from_user.id}")
     # Получаем текущее состояние
     current_state = await state.get_state()
 
