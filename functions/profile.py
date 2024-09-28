@@ -2,11 +2,13 @@ import logging
 import sqlite3
 
 import aiosqlite
-from aiogram import types, F
+from aiogram import types, F, Router
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
-from main import dp, create_connection, DB_FILE
 
+from shared import dp, DB_FILE, create_connection
+
+profile_router = Router()
 
 # Функция для получения данных пользователя
 async def get_user_data(user_id: int):
@@ -20,7 +22,7 @@ async def get_user_data(user_id: int):
             else:
                 return None, None, 0, 0 # Вернём 0 для изученных слов, если пользователь не найден
 
-@dp.message(F.text == "Профиль")
+@profile_router.message(F.text == "Профиль")
 async def check_profile(message: types.Message, state: FSMContext) -> None:
     await state.clear()
     user_id = message.from_user.id
@@ -50,7 +52,7 @@ async def get_top_users() -> list:
             rows = await cursor.fetchall()
             return rows
 
-@dp.callback_query(F.data == "top_leaders")
+@profile_router.callback_query(F.data == "top_leaders")
 async def top_users(callback_query: types.CallbackQuery, state: FSMContext) -> None:
     rows = await get_top_users()
 
@@ -58,14 +60,13 @@ async def top_users(callback_query: types.CallbackQuery, state: FSMContext) -> N
         await callback_query.answer("Топ-15 пользователей отсутствует.")
         return
 
-    response = "*🔝Top-15 пользователей по изученным словам:*\n\n"
+    response = "<b>🔝Top-15 пользователей по изученным словам:</b>\n\n"
     for idx, (user_id, full_name, learned_words_count) in enumerate(rows, start=1):
-        user_link = f"[{full_name}](tg://user?id={user_id})"  # Форматируем ссылку
+        user_link = f"<a href='tg://user?id={user_id}'>{full_name}</a>"  # Форматируем ссылку
         response += f"{idx}. {user_link} - {learned_words_count} слов\n"
 
-    response = response.replace(".", "\\.").replace("-", "\\-")
+    await callback_query.message.answer(response, parse_mode='HTML')
 
-    await callback_query.message.answer(response, parse_mode='MarkdownV2')
 
 # Функция для обновления количества изученных слов
 async def update_learned_words_count(user_id: int) -> int:

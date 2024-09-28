@@ -5,8 +5,8 @@ from aiogram import types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
-from main import dp, Form, is_command, update_learned_words_count, create_connection, DB_FILE, \
-    update_learned_topics_count
+from main import is_command, update_learned_topics_count, update_learned_words_count
+from shared import dp, Form, DB_FILE, create_connection
 
 
 @dp.message(F.text == "Добавить тему")

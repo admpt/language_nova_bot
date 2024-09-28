@@ -2,19 +2,19 @@ import logging
 import sqlite3
 from sqlite3 import Connection
 
-from aiogram import F, types, Bot
+from aiogram import F, types, Bot, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent, \
-    ReplyKeyboardMarkup
-from pyexpat.errors import messages
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
 
-from main import DB_FILE, update_learned_words_count, Form, is_command, update_learned_topics_count
+from shared import is_command, update_learned_words_count, update_learned_topics_count
+from shared import DB_FILE, Form, create_connection
 from token_of_bot import API_TOKEN
 
 TOKEN = API_TOKEN
-from main import dp
+
 bot = Bot(token=TOKEN)
 
+add_words_router = Router()
 
 # Функция для поиска тем пользователя
 async def search_user_topics(user_id: int, query: str) -> list:
@@ -40,7 +40,7 @@ async def search_user_topics(user_id: int, query: str) -> list:
         conn.close()
 
 # Обработка команды "Добавить слова"
-@dp.message(F.text == "Добавить слова")
+@add_words_router.message(F.text == "Добавить слова")
 async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
     await state.clear()  # Сбрасываем состояние
     command = "поиск темы для добавления слов: "
@@ -50,7 +50,7 @@ async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
     await message.answer("Выберите тему из предложенных:\nДоделать описание", reply_markup=kb)
 
 
-@dp.inline_query(F.query.startswith("поиск темы для добавления слов: "))
+@add_words_router.inline_query(F.query.startswith("поиск темы для добавления слов: "))
 async def inline_query_handler(inline_query: types.InlineQuery) -> None:
     query = inline_query.query[len("поиск темы для добавления слов: "):].strip()  # Убираем команду
     user_id = inline_query.from_user.id
@@ -94,7 +94,7 @@ async def inline_query_handler(inline_query: types.InlineQuery) -> None:
         conn.close()
 
 # Обработка выбранной темы сразу после инлайн-запроса
-@dp.message(lambda message: message.text.startswith("Вы выбрали тему:"))
+@add_words_router.message(lambda message: message.text.startswith("Вы выбрали тему:"))
 async def process_topic_selection(message: types.Message, state: FSMContext) -> None:
     topic_name = message.text.split(": ", 1)[-1]
 
@@ -128,18 +128,6 @@ async def process_topic_selection(message: types.Message, state: FSMContext) -> 
     finally:
         conn.close()
 
-
-
-# Функция для создания соединения с базой данных
-def create_connection(db_file: str) -> Connection:
-    try:
-        conn = sqlite3.connect(db_file)
-        logging.info("Connection to database established.")
-        return conn
-    except sqlite3.Error as e:
-        logging.error(f"Database connection error: {e}")
-        raise
-
 # Функция для добавления или обновления пользователя в базе данных
 async def upsert_user(user_id: int, username_tg: str, full_name: str, balance: int = 0, elite_status: str = 'No',
                 learned_words_count: int = 0) -> None:
@@ -163,7 +151,7 @@ async def upsert_user(user_id: int, username_tg: str, full_name: str, balance: i
 
 
 
-@dp.callback_query(lambda c: c.data.startswith("add_words:"))
+@add_words_router.callback_query(lambda c: c.data.startswith("add_words:"))
 async def add_words_callback(callback_query: types.CallbackQuery, state: FSMContext):
     topic_id = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
@@ -185,7 +173,7 @@ async def add_words_callback(callback_query: types.CallbackQuery, state: FSMCont
         await callback_query.answer("Тема не найдена.")
 
 # Обработка текста для добавления слова
-@dp.message(Form.waiting_for_word)
+@add_words_router.message(Form.waiting_for_word)
 async def handle_word_input(message: types.Message, state: FSMContext) -> None:
     word = message.text.strip()
     logging.info(f"Получено слово: {word}")
@@ -216,7 +204,7 @@ async def add_word_to_user_topic(user_id: int, topic_id: int, word: str, transla
         conn.close()
 
 # Обработка текста для добавления перевода
-@dp.message(Form.waiting_for_translation)
+@add_words_router.message(Form.waiting_for_translation)
 async def process_translation(message: types.Message, state: FSMContext) -> None:
     translation = message.text.strip()
     user_id = message.from_user.id
@@ -242,7 +230,7 @@ async def process_translation(message: types.Message, state: FSMContext) -> None
     await message.answer(message_text, parse_mode='Markdown')
 
 
-@dp.callback_query(lambda c: c.data.startswith("delete_topic:"))
+@add_words_router.callback_query(lambda c: c.data.startswith("delete_topic:"))
 async def delete_topic_callback(callback_query: types.CallbackQuery):
     topic_id = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
@@ -268,7 +256,7 @@ async def delete_topic_callback(callback_query: types.CallbackQuery):
     conn.close()
 
 
-@dp.callback_query(lambda c: c.data.startswith("confirm_delete:"))
+@add_words_router.callback_query(lambda c: c.data.startswith("confirm_delete:"))
 async def confirm_delete_topic(callback_query: types.CallbackQuery):
     topic_id = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
@@ -294,7 +282,7 @@ async def confirm_delete_topic(callback_query: types.CallbackQuery):
         conn.close()
 
 
-@dp.callback_query(lambda c: c.data == "cancel_delete")
+@add_words_router.callback_query(lambda c: c.data == "cancel_delete")
 async def cancel_delete_topic(callback_query: types.CallbackQuery):
     await callback_query.message.answer("Удаление темы отменено.")
     user_id = callback_query.from_user.id

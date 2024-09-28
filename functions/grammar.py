@@ -1,18 +1,21 @@
 import logging
 import sqlite3
 from uuid import uuid4
+import random
 
-from aiogram import types, F, Bot
+from aiogram import types, F, Bot, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent
-from main import dp, DB_FILE, TOKEN
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent, \
+    ReplyKeyboardMarkup, KeyboardButton
+from shared import DB_FILE, TOKEN, TranslationStates
+
 bot = Bot(token=TOKEN)
 
 logging.basicConfig(level=logging.INFO)
-
+grammar_router = Router()
 
 # Обработчик сообщения "Грамматика"
-@dp.message(F.text=="Грамматика")
+@grammar_router.message(F.text=="Грамматика")
 async def grammar(message: types.Message, state: FSMContext) -> None:
     await state.clear()  # Сбрасываем состояние
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -22,11 +25,12 @@ async def grammar(message: types.Message, state: FSMContext) -> None:
 
 
 # Обработчик callback запроса для "Irregular Verbs"
-@dp.callback_query(F.data == "irregular_verbs")
+@grammar_router.callback_query(F.data == "irregular_verbs")
 async def handle_irregular_verbs(callback_query: types.CallbackQuery, state: FSMContext):
     command = "введите глагол в форме Infinitive: "  # Определяем команду
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Неправильные глаголы", switch_inline_query_current_chat=command)]
+        [InlineKeyboardButton(text="Неправильные глаголы", switch_inline_query_current_chat=command)],
+        [InlineKeyboardButton(text="Повторять", callback_data="start_repeat_irregular_verbs")]
     ])
     await callback_query.message.answer(
         "Вы выбрали тему: Неправильные глаголы.\nПожалуйста, введите глагол в форме инфинитива:",
@@ -36,7 +40,7 @@ async def handle_irregular_verbs(callback_query: types.CallbackQuery, state: FSM
 
 
 # Обработчик инлайн-запроса
-@dp.inline_query(lambda query: query.query.startswith("введите глагол в форме Infinitive: "))
+@grammar_router.inline_query(lambda query: query.query.startswith("введите глагол в форме Infinitive: "))
 async def inline_query_handler_irregular(inline_query: types.InlineQuery) -> None:
     command_prefix = "введите глагол в форме Infinitive: "
     query_text = inline_query.query[len(command_prefix):].strip()
@@ -88,7 +92,7 @@ async def inline_query_handler_irregular(inline_query: types.InlineQuery) -> Non
 
 
 # Обработчик сообщения после выбора глагола
-@dp.message(lambda message: message.text.startswith("Глагол: "))
+@grammar_router.message(lambda message: message.text.startswith("Глагол: "))
 async def process_topic_selection_repeat(message: types.Message, state: FSMContext) -> None:
     await state.clear()
     verb_name = message.text.split(": ", 1)[-1].strip()
@@ -164,3 +168,104 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
         await message.answer("Произошла ошибка при получении данных.")
+
+
+@grammar_router.callback_query(F.data == "start_repeat_irregular_verbs")
+async def start_repeat_irregular_verbs(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback_query.from_user.id
+    await state.set_state(TranslationStates.repeat_irregular_verbs)
+    await ask_for_irregular_repeat(callback_query.message, user_id, state)
+
+@grammar_router.message(F.text=='ask_for_irregular_repeat')
+async def ask_for_irregular_repeat(message: types.Message, user_id: int, state: FSMContext):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    stop_kb = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="Прекратить повтор")]],
+        resize_keyboard=True
+    )
+
+    try:
+        cursor.execute(
+            "SELECT v1, v1_second, v2_first, v2_second, v3_first, v3_second, first_translation, second_translation, third_translation FROM irregular_verbs")
+        verbs = cursor.fetchall()
+
+        if verbs:
+            verb_data = random.choice(verbs)  # Выбираем случайный глагол
+            v1, v1_second, v2_first, v2_second, v3_first, v3_second, *translations = verb_data
+
+            # Удаляем None из списков
+            translations = [t for t in translations if t]  # Убираем пустые строки
+
+            # Сохраняем данные о текущем глаголе
+            await state.update_data(
+                current_verb=v1,
+                v1_second=v1_second,
+                v2_first=v2_first,
+                v2_second=v2_second,
+                v3_first=v3_first,
+                v3_second=v3_second,
+                translations=translations
+            )
+
+            # Случайным образом выбираем форму для повторения
+            form_choice = random.choice(["Infinitive", "Past Simple", "Past Participle"])
+            await state.update_data(form_choice=form_choice)
+
+            # Отправляем вопрос пользователю
+            await message.answer(f"Введите {form_choice} для: {', '.join(filter(None, translations))}",
+                                 reply_markup=stop_kb)
+
+        else:
+            await message.answer("В базе данных нет глаголов.", reply_markup=stop_kb)
+    except sqlite3.Error as e:
+        logging.error(f"Database error: {e}")
+        await message.answer("Произошла ошибка при получении глаголов.", reply_markup=stop_kb)
+    finally:
+        conn.close()
+
+
+@grammar_router.message(lambda message: message.text.strip() != "Прекратить повтор" and TranslationStates.repeat_irregular_verbs)
+async def check_repeat_answer(message: types.Message, state: FSMContext):
+
+    # Получаем текущее состояние
+    current_state = await state.get_state()
+
+    # Если состояние сброшено (None), игнорируем сообщение
+    if current_state is None:
+        return
+
+    data = await state.get_data()
+    current_verb = data.get("current_verb")
+    v1_second = data.get("v1_second")
+    v2_first = data.get("v2_first")
+    v2_second = data.get("v2_second")
+    v3_first = data.get("v3_first")
+    v3_second = data.get("v3_second")
+    form_choice = data.get("form_choice")
+
+    user_input = message.text.strip()
+
+    # Проверяем правильный ответ в зависимости от формы
+    if form_choice == "Infinitive":
+        if user_input in [current_verb, v1_second]:
+            await message.answer("Правильно!")
+        else:
+            await message.answer(f"Неправильно. Правильный ответ: {current_verb}.")
+
+    elif form_choice == "Past Simple":
+        if user_input in [v2_first, v2_second]:
+            await message.answer("Правильно!")
+        else:
+            await message.answer(f"Неправильно. Правильный ответ: {v2_first} или {v2_second}.")
+
+    elif form_choice == "Past Participle":
+        if user_input in [v3_first, v3_second]:
+            await message.answer("Правильно!")
+        else:
+            await message.answer(f"Неправильно. Правильный ответ: {v3_first} или {v3_second}.")
+
+    # Запрашиваем следующее слово
+    await ask_for_irregular_repeat(message, message.from_user.id, state)

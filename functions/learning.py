@@ -1,12 +1,14 @@
 import aiosqlite
 import logging
-from aiogram import types, F
+from aiogram import types, F, Router
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
-from main import dp
 
+from shared import dp
 
-@dp.message(F.text == "Словарь")
+learning_router = Router()
+
+@learning_router.message(F.text == "Словарь")
 async def learning(message: types.Message) -> None:
     user_id = message.from_user.id
 

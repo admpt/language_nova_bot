@@ -1,18 +1,19 @@
 import logging
 import sqlite3
 
-from aiogram import F, types, Bot
+from aiogram import F, types, Bot, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, \
     InlineQueryResultArticle, InputTextMessageContent
-from main import dp, Form, DB_FILE, TOKEN, TranslationStates
 import random
 
+from shared import TOKEN, dp, DB_FILE, TranslationStates
 
 bot = Bot(token=TOKEN)
+repeat_words_router = Router()
 
-@dp.message(F.text == "Повторение слов")
+@repeat_words_router.message(F.text == "Повторение слов")
 async def repeat_words(message: types.Message, state: FSMContext) -> None:
     await state.clear()  # Сбрасываем состояние
     command = "поиск тем для повторения: "  # Определяем команду
@@ -22,7 +23,7 @@ async def repeat_words(message: types.Message, state: FSMContext) -> None:
     await message.answer("Выберите тему для повторения слов в ней:", reply_markup=kb)
 
 
-@dp.inline_query(F.query.startswith("поиск тем для повторения: "))
+@repeat_words_router.inline_query(F.query.startswith("поиск тем для повторения: "))
 async def inline_query_handler_repeat(inline_query: types.InlineQuery) -> None:
     query = inline_query.query[len("поиск тем для повторения: "):].strip()  # Убираем команду
     user_id = inline_query.from_user.id
@@ -69,7 +70,7 @@ async def inline_query_handler_repeat(inline_query: types.InlineQuery) -> None:
 
 
 # Обработка выбранной темы сразу после инлайн-запроса
-@dp.message(lambda message: message.text.startswith("Для повторения была выбрана тема:"))
+@repeat_words_router.message(lambda message: message.text.startswith("Для повторения была выбрана тема:"))
 async def process_topic_selection_repeat(message: types.Message, state: FSMContext) -> None:
     topic_name = message.text.split(": ", 1)[-1]
 
@@ -104,8 +105,9 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
         conn.close()
 
 
-@dp.message(F.text == "Прекратить повтор")
+@repeat_words_router.message(F.text == "Прекратить повтор")
 async def stop_translation(message: types.Message, state: FSMContext):
+    logging.info("Обработчик 'Прекратить повтор' вызван.")
     await state.clear()  # Сбрасываем состояние
     kb = [
         [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
@@ -113,14 +115,11 @@ async def stop_translation(message: types.Message, state: FSMContext):
         [KeyboardButton(text="Грамматика")],
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-    await state.clear()
     await message.answer("Повторение прекращено.", reply_markup=keyboard)
 
 
-
-
 # Состояние для хранения текущего слова
-@dp.callback_query(lambda c: c.data.startswith("eng_ru:"))
+@repeat_words_router.callback_query(lambda c: c.data.startswith("eng_ru:"))
 async def start_eng_ru_translation(callback_query: types.CallbackQuery, state: FSMContext):
     topic_id = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
@@ -129,6 +128,7 @@ async def start_eng_ru_translation(callback_query: types.CallbackQuery, state: F
     await state.set_state(TranslationStates.ENG_RU)
     await ask_for_ru_translation(callback_query.message, user_id, topic_id, state)
 
+@repeat_words_router.message(F.text=='ask_for_ru_translation')
 async def ask_for_ru_translation(message: types.Message, user_id: int, topic_id: int, state: FSMContext):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -151,7 +151,7 @@ async def ask_for_ru_translation(message: types.Message, user_id: int, topic_id:
     finally:
         conn.close()
 
-@dp.message(lambda message: message.text.strip() != "Прекратить повтор" and F.state == TranslationStates.ENG_RU)
+@repeat_words_router.message(lambda message: message.text.strip() != "Прекратить повтор" and TranslationStates.ENG_RU)
 async def check_eng_ru_translation(message: types.Message, state: FSMContext):
     data = await state.get_data()
     current_translation = data.get('current_translation')
@@ -174,7 +174,7 @@ async def check_eng_ru_translation(message: types.Message, state: FSMContext):
 
 
 
-@dp.callback_query(lambda c: c.data.startswith("ru_eng:"))
+@repeat_words_router.callback_query(lambda c: c.data.startswith("ru_eng:"))
 async def start_ru_eng_translation(callback_query: types.CallbackQuery, state: FSMContext):
     await state.clear()
     topic_id = callback_query.data.split(":")[1]
@@ -183,6 +183,7 @@ async def start_ru_eng_translation(callback_query: types.CallbackQuery, state: F
     await state.set_state(TranslationStates.RU_ENG)
     await ask_for_eng_translation(callback_query.message, user_id, topic_id, state)
 
+@repeat_words_router.message(F.text=='ask_for_eng_translation')
 async def ask_for_eng_translation(message: types.Message, user_id: int, topic_id: int, state: FSMContext):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -209,7 +210,7 @@ async def ask_for_eng_translation(message: types.Message, user_id: int, topic_id
     finally:
         conn.close()
 
-@dp.message(lambda message: message.text.strip() != "Прекратить повтор" and F.state == TranslationStates.RU_ENG)
+@repeat_words_router.message(lambda message: message.text.strip() != "Прекратить повтор" and TranslationStates.RU_ENG)
 async def check_ru_eng_translation(message: types.Message, state: FSMContext):
     data = await state.get_data()
     current_word = data.get('current_word')  # Это английское слово

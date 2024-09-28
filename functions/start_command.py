@@ -1,15 +1,17 @@
 import sqlite3
 
-from aiogram import types, Bot
+from aiogram import types, Bot, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 import logging
+
+from shared import dp, DB_FILE, create_connection
 from token_of_bot import API_TOKEN
 
 TOKEN = API_TOKEN
-from main import dp, create_connection, DB_FILE
 
 bot = Bot(token=TOKEN)
+start_router = Router()
 
 async def process_start_command(message: types.Message, state: FSMContext, upsert_user) -> None:
     await state.clear()  # Сбрасываем состояние
@@ -32,7 +34,7 @@ async def process_start_command(message: types.Message, state: FSMContext, upser
         logging.error(f"Error while updating user data: {e}")
 
 # Обработка нажатия на кнопку "Начать обучение!"
-@dp.callback_query(lambda c: c.data == 'start_learning')
+@start_router.callback_query(lambda c: c.data == 'start_learning')
 async def process_start_learning(callback_query: types.CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     await bot.answer_callback_query(callback_query.id)
