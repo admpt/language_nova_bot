@@ -295,31 +295,447 @@ async def handle_active_voice(callback_query: types.CallbackQuery, state: FSMCon
     logging.info(f"handle_active_voice {callback_query.from_user.id}")
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Present Simple", callback_data="present_simple"),
-         InlineKeyboardButton(text="Present Continuous", callback_data="present_continuous"),
-         InlineKeyboardButton(text="Present Perfect", callback_data="present_perfect"),
-         InlineKeyboardButton(text="Present Perfect Continuous", callback_data="present_perfect_continuous"),
+        [InlineKeyboardButton(text="Present Simple", callback_data="active_present_simple"),
+         InlineKeyboardButton(text="Present Continuous", callback_data="active_present_continuous"),
+         InlineKeyboardButton(text="Present Perfect", callback_data="active_present_perfect"),
+         InlineKeyboardButton(text="Present Perfect Continuous", callback_data="active_present_perfect_continuous"),
          ],
-        [InlineKeyboardButton(text="Past Simple", callback_data="past_simple"),
-         InlineKeyboardButton(text="Past Continuous", callback_data="past_continuous"),
-         InlineKeyboardButton(text="Past Perfect", callback_data="past_perfect"),
-         InlineKeyboardButton(text="Past Perfect Continuous", callback_data="past_perfect_continuous"),
+        [InlineKeyboardButton(text="Past Simple", callback_data="active_past_simple"),
+         InlineKeyboardButton(text="Past Continuous", callback_data="active_past_continuous"),
+         InlineKeyboardButton(text="Past Perfect", callback_data="active_past_perfect"),
+         InlineKeyboardButton(text="Past Perfect Continuous", callback_data="active_past_perfect_continuous"),
          ],
-        [InlineKeyboardButton(text="Future Simple", callback_data="future_simple"),
-         InlineKeyboardButton(text="Future Continuous", callback_data="future_continuous"),
-         InlineKeyboardButton(text="Future Perfect", callback_data="future_perfect"),
-         InlineKeyboardButton(text="Future Perfect Continuous", callback_data="future_perfect_continuous"),
+        [InlineKeyboardButton(text="Future Simple", callback_data="active_future_simple"),
+         InlineKeyboardButton(text="Future Continuous", callback_data="active_future_continuous"),
+         InlineKeyboardButton(text="Future Perfect", callback_data="active_future_perfect"),
+         InlineKeyboardButton(text="Future Perfect Continuous", callback_data="active_future_perfect_continuous"),
          ],
-        [InlineKeyboardButton(text="Future in the Past Simple", callback_data="future_in_the_past_simple"),
-         InlineKeyboardButton(text="Future in the Past Continuous", callback_data="future_in_the_past_continuous"),
-         InlineKeyboardButton(text="Future in the Past Perfect", callback_data="future_in_the_past_perfect"),
+        [InlineKeyboardButton(text="Future in the Past Simple", callback_data="active_future_in_the_past_simple"),
+         InlineKeyboardButton(text="Future in the Past Continuous", callback_data="active_future_in_the_past_continuous"),
+         InlineKeyboardButton(text="Future in the Past Perfect", callback_data="active_future_in_the_past_perfect"),
          InlineKeyboardButton(text="Future in the Past Perfect Continuous",
-                              callback_data="future_in_the_past_perfect_continuous"),
+                              callback_data="active_future_in_the_past_perfect_continuous"),
          ]
     ])
 
     await callback_query.message.answer("Выберите время:", reply_markup=kb)
 
+
+@grammar_router.callback_query(F.data == "active_present_simple")
+async def handle_active_present_simple(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"handle_present_simple {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Present Simple'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_present_continuous")
+async def handle_active_present_continuous(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_present_continuous {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Present Continuous'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_present_perfect")
+async def handle_active_present_perfect(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_present_perfect {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Present Perfect'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_present_perfect_continuous")
+async def handle_active_present_perfect_continuous(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_present_perfect_continuous {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Present Perfect Continuous'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_past_simple")
+async def handle_active_past_simple(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_past_simple {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Past Simple'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_past_continuous")
+async def handle_active_past_continuous(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_past_continuous {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Past Continuous'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_past_perfect")
+async def handle_active_past_perfect(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_past_perfect {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Past Perfect'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_past_perfect_continuous")
+async def handle_active_past_perfect_continuous(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_past_perfect_continuous {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Past Perfect Continuous'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_future_simple")
+async def handle_active_future_simple(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_future_simple {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Future Simple'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_future_continuous")
+async def handle_active_future_continuous(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_future_continuous {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Future Continuous'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_future_perfect")
+async def handle_active_future_perfect(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_future_perfect {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Future Perfect'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_future_perfect_continuous")
+async def handle_active_future_perfect_continuous(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_future_perfect_continuous {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Future Perfect Continuous'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_future_in_the_past_simple")
+async def handle_active_future_in_the_past_simple(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_future_in_the_past_simple {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Future in the Past Simple'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_future_in_the_past_continuous")
+async def handle_active_future_in_the_past_continuous(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_future_in_the_past_continuous {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Future in the Past Continuous'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_future_in_the_past_perfect")
+async def handle_active_future_in_the_past_perfect(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_future_in_the_past_perfect {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Future in the Past Perfect'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
+
+@grammar_router.callback_query(F.data == "active_future_in_the_past_perfect_continuous")
+async def handle_active_future_in_the_past_perfect_continuous(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"active_future_in_the_past_perfect_continuous {callback_query.from_user.id}")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM times WHERE time_name = 'Future in the Past Perfect Continuous'")
+        result = cursor.fetchone()
+        if result:
+            # Формируем сообщение с данными
+            message = (
+                f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
+                f"<b>Описание:</b> {result[2]}\n\n"  # description
+                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>     Пример:</b> {result[4]}\n"  # example
+                f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
+                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>     Пример:</b> {result[7]}\n"  # example_negative
+                f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
+                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
+                f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
+            )
+            await callback_query.message.answer(message, parse_mode='HTML')
+        else:
+            await callback_query.message.answer("Данные не найдены.")
 
 @grammar_router.callback_query(F.data == "select_passive_voice")
 async def handle_passive_voice(callback_query: types.CallbackQuery, state: FSMContext):
