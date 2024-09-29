@@ -21,7 +21,8 @@ async def grammar(message: types.Message, state: FSMContext) -> None:
     logging.info(f"grammar {message.from_user.id}")
     await state.clear()  # Сбрасываем состояние
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Irregular Verbs", callback_data='irregular_verbs')]
+        [InlineKeyboardButton(text="Irregular Verbs", callback_data="irregular_verbs"),
+         InlineKeyboardButton(text="Таблица Времен", callback_data="time_select")]
     ])
     await message.answer("Выберите тему по грамматике:", reply_markup=kb)
 
@@ -276,3 +277,76 @@ async def check_repeat_answer(message: types.Message, state: FSMContext):
 
     # Запрашиваем следующее слово
     await ask_for_irregular_repeat(message, message.from_user.id, state)
+
+
+@grammar_router.callback_query(F.data == "time_select")
+async def handle_type_time_select(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"handle_type_time_select {callback_query.from_user.id}")
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Active Voice", callback_data="select_active_voice"),
+         InlineKeyboardButton(text="Passive Voice", callback_data="select_passive_voice")
+        ]
+    ])
+    await callback_query.message.answer("Выберите время:", reply_markup=kb)
+
+
+@grammar_router.callback_query(F.data == "select_active_voice")
+async def handle_active_voice(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"handle_active_voice {callback_query.from_user.id}")
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Present Simple", callback_data="present_simple"),
+         InlineKeyboardButton(text="Present Continuous", callback_data="present_continuous"),
+         InlineKeyboardButton(text="Present Perfect", callback_data="present_perfect"),
+         InlineKeyboardButton(text="Present Perfect Continuous", callback_data="present_perfect_continuous"),
+         ],
+        [InlineKeyboardButton(text="Past Simple", callback_data="past_simple"),
+         InlineKeyboardButton(text="Past Continuous", callback_data="past_continuous"),
+         InlineKeyboardButton(text="Past Perfect", callback_data="past_perfect"),
+         InlineKeyboardButton(text="Past Perfect Continuous", callback_data="past_perfect_continuous"),
+         ],
+        [InlineKeyboardButton(text="Future Simple", callback_data="future_simple"),
+         InlineKeyboardButton(text="Future Continuous", callback_data="future_continuous"),
+         InlineKeyboardButton(text="Future Perfect", callback_data="future_perfect"),
+         InlineKeyboardButton(text="Future Perfect Continuous", callback_data="future_perfect_continuous"),
+         ],
+        [InlineKeyboardButton(text="Future in the Past Simple", callback_data="future_in_the_past_simple"),
+         InlineKeyboardButton(text="Future in the Past Continuous", callback_data="future_in_the_past_continuous"),
+         InlineKeyboardButton(text="Future in the Past Perfect", callback_data="future_in_the_past_perfect"),
+         InlineKeyboardButton(text="Future in the Past Perfect Continuous",
+                              callback_data="future_in_the_past_perfect_continuous"),
+         ]
+    ])
+
+    await callback_query.message.answer("Выберите время:", reply_markup=kb)
+
+
+@grammar_router.callback_query(F.data == "select_passive_voice")
+async def handle_passive_voice(callback_query: types.CallbackQuery, state: FSMContext):
+    logging.info(f"handle_passive_voice {callback_query.from_user.id}")
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Present Simple", callback_data="present_simple"),
+         InlineKeyboardButton(text="Present Continuous", callback_data="present_continuous"),
+         InlineKeyboardButton(text="Present Perfect", callback_data="present_perfect"),
+         InlineKeyboardButton(text="Present Perfect Continuous", callback_data="present_perfect_continuous"),
+         ],
+        [InlineKeyboardButton(text="Past Simple", callback_data="past_simple"),
+         InlineKeyboardButton(text="Past Continuous", callback_data="past_continuous"),
+         InlineKeyboardButton(text="Past Perfect", callback_data="past_perfect"),
+         InlineKeyboardButton(text="Past Perfect Continuous", callback_data="past_perfect_continuous"),
+         ],
+        [InlineKeyboardButton(text="Future Simple", callback_data="future_simple"),
+         InlineKeyboardButton(text="Future Continuous", callback_data="future_continuous"),
+         InlineKeyboardButton(text="Future Perfect", callback_data="future_perfect"),
+         InlineKeyboardButton(text="Future Perfect Continuous", callback_data="future_perfect_continuous"),
+         ],
+        [InlineKeyboardButton(text="Future in the Past Simple", callback_data="future_in_the_past_simple"),
+         InlineKeyboardButton(text="Future in the Past Continuous", callback_data="future_in_the_past_continuous"),
+         InlineKeyboardButton(text="Future in the Past Perfect", callback_data="future_in_the_past_perfect"),
+         InlineKeyboardButton(text="Future in the Past Perfect Continuous",
+                              callback_data="future_in_the_past_perfect_continuous"),
+         ]
+    ])
+
+    await callback_query.message.answer("Выберите время:", reply_markup=kb)

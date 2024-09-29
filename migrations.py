@@ -95,6 +95,28 @@ def upgrade_to_v1(conn: Connection) -> None:
             )
         """)
 
+    # Создаем таблицу `times`
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='times';")
+    table_exists = cursor.fetchone()
+
+    if not table_exists:
+        cursor.execute(""" 
+            CREATE TABLE IF NOT EXISTS times (
+                time_name TEXT NOT NULL,
+                translation_name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                formula TEXT NOT NULL,
+                example TEXT NOT NULL,
+                translation_example TEXT NOT NULL,
+                negative_formula TEXT NOT NULL,
+                example_negative TEXT NOT NULL,
+                translation_example_negative TEXT NOT NULL,
+                interrogative_formula TEXT NOT NULL,
+                example_interrogative TEXT NOT NULL,
+                translation_example_interrogative TEXT NOT NULL
+            )
+        """)
+
     conn.commit()
 
 
@@ -103,7 +125,7 @@ def migrate(db_file: str) -> None:
     conn = sqlite3.connect(db_file)
     try:
         upgrade_to_v1(conn)  # Применяем миграцию версии 1
-        print("Migration v1 applied.")
+        print("Migration applied.")
     except sqlite3.Error as e:
         print(f"Database error: {e}")
     finally:

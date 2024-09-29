@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+from uuid import uuid4
 
 from aiogram import F, types, Bot, Router
 from aiogram.filters import StateFilter
@@ -92,12 +93,12 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
             word_count = cursor.fetchone()[0]
 
             message_text = f"Название темы: *{topic_name}*\nКоличество слов: {word_count}" if word_count > 0 else f"*{topic_name}*\nКоличество слов: 0"
-
+            command = f"поиск слова в теме: "
             # Дальнейшие действия
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="RU-ENG", callback_data=f"ru_eng:{topic_id}"),
                  InlineKeyboardButton(text="ENG-RU", callback_data=f"eng_ru:{topic_id}")],
-                [InlineKeyboardButton(text="Найти слово", callback_data=f"find_word_in_topic:{topic_id}")]
+                [InlineKeyboardButton(text="Найти слово", switch_inline_query_current_chat=command)]
             ])
             await message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
             await state.clear()  # Очищаем состояние после выбора темы
@@ -236,4 +237,57 @@ async def check_ru_eng_translation(message: types.Message, state: FSMContext):
         await message.answer("Неправильно. Попробуйте еще раз.", reply_markup=stop_kb, resize_keyboard=True)
 
 
-# @repeat_words_router.callback_query(lambda c: c.data.startswith("find_word_in_topic:"))
+@repeat_words_router.callback_query(lambda c: c.data.startswith("поиск слова в теме: "))
+async def inline_query_handler_topics(inline_query: types.InlineQuery) -> None:
+    logging.info(f"inline_query_handler_topics {inline_query.from_user.id}")
+    command_prefix = "поиск слова в теме "
+    topic_name, search_query = inline_query.data[len(command_prefix):].strip().split(': ', 1)
+
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM topics WHERE content = ?", (topic_name,))
+            topic = cursor.fetchone()
+
+            if topic:
+                topic_id = topic[0]
+                cursor.execute("""
+                    SELECT word, translation
+                    FROM user_dictionary
+                    WHERE topic_id = ? AND word LIKE ?
+                    LIMIT 50
+                """, (topic_id, f'%{search_query}%'))
+                results = cursor.fetchall()
+            else:
+                results = []
+
+        items = []
+        for item in results:
+            result_id = str(uuid4())
+            title = item[0] if item[0] else 'Unknown Word'
+            items.append(
+                InlineQueryResultArticle(
+                    id=result_id,
+                    title=title,
+                    input_message_content=InputTextMessageContent(
+                        message_text=f"Слово: {item[0]}\nПеревод: {item[1]}"
+                    )
+                )
+            )
+
+        if not items:
+            items = [
+                InlineQueryResultArticle(
+                    id="no_results",
+                    title="Нет доступных слов",
+                    input_message_content=InputTextMessageContent(message_text="Не найдено.")
+                )
+            ]
+
+        await inline_query.answer(results=items, cache_time=1)
+
+    except sqlite3.OperationalError as e:
+        logging.error(f"Database error: {e}")
+        await inline_query.answer(results=[])
+
+# Доделать
