@@ -7,6 +7,7 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
 
+from functions.start_command import get_user_id_by_referral_code
 from shared import is_command, update_learned_words_count, update_learned_topics_count
 from shared import DB_FILE, Form, create_connection
 from token_of_bot import API_TOKEN
@@ -52,7 +53,7 @@ async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
     await message.answer("Выберите тему из предложенных:\nДоделать описание", reply_markup=kb)
 
 
-@add_words_router.inline_query(F.query.startswith("поиск темы для добавления слов: "), StateFilter(None))
+@add_words_router.inline_query(F.query.startswith("поиск темы для добавления слов: "))
 async def inline_query_handler(inline_query: types.InlineQuery) -> None:
     logging.info(f"inline_query_handler {inline_query.from_user.id}")
     query = inline_query.query[len("поиск темы для добавления слов: "):].strip()  # Убираем команду
@@ -133,25 +134,41 @@ async def process_topic_selection(message: types.Message, state: FSMContext) -> 
         conn.close()
 
 # Функция для добавления или обновления пользователя в базе данных
-async def upsert_user(user_id: int, username_tg: str, full_name: str, balance: int = 0, elite_status: str = 'No',
-                learned_words_count: int = 0) -> None:
+async def upsert_user(user_id: int, username_tg: str, full_name: str, referral_code: str = None,
+                      balance: int = 0, elite_status: str = 'No', learned_words_count: int = 0,
+                      elite_start_date: str = None) -> None:
     conn = create_connection(DB_FILE)
     try:
         cursor = conn.cursor()
-        cursor.execute("""INSERT INTO users (user_id, username_tg, full_name, balance, elite_status, learned_words_count)
-                          VALUES (?, ?, ?, ?, ?, ?)
+
+        # Генерация уникального реферального кода
+        unique_referral_code = str(user_id)  # Можно изменить на более сложную генерацию
+
+        # Если реферальный код указан, проверяем и обновляем `referred_by`
+        referred_by_id = None
+        if referral_code:
+            referred_by_id = get_user_id_by_referral_code(referral_code)
+
+        cursor.execute("""INSERT INTO users (user_id, username_tg, full_name, balance, elite_status, learned_words_count, referral_code, referred_by, elite_start_date)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                           ON CONFLICT(user_id) DO UPDATE SET
                               username_tg = excluded.username_tg,
                               full_name = excluded.full_name,
                               balance = excluded.balance,
                               elite_status = excluded.elite_status,
-                              learned_words_count = excluded.learned_words_count
-                       """, (user_id, username_tg, full_name, balance, elite_status, learned_words_count))
+                              learned_words_count = excluded.learned_words_count,
+                              referral_code = excluded.referral_code,
+                              referred_by = excluded.referred_by,
+                              elite_start_date = excluded.elite_start_date
+                       """, (
+        user_id, username_tg, full_name, balance, elite_status, learned_words_count, unique_referral_code,
+        referred_by_id, elite_start_date))
         conn.commit()
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
     finally:
         conn.close()
+
 
 
 

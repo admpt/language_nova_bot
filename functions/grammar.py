@@ -333,13 +333,13 @@ async def handle_active_present_simple(callback_query: types.CallbackQuery, stat
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -359,13 +359,13 @@ async def handle_active_present_continuous(callback_query: types.CallbackQuery, 
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -385,13 +385,13 @@ async def handle_active_present_perfect(callback_query: types.CallbackQuery, sta
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -411,13 +411,13 @@ async def handle_active_present_perfect_continuous(callback_query: types.Callbac
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -437,13 +437,13 @@ async def handle_active_past_simple(callback_query: types.CallbackQuery, state: 
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -463,13 +463,13 @@ async def handle_active_past_continuous(callback_query: types.CallbackQuery, sta
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -489,13 +489,13 @@ async def handle_active_past_perfect(callback_query: types.CallbackQuery, state:
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -515,13 +515,13 @@ async def handle_active_past_perfect_continuous(callback_query: types.CallbackQu
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -541,13 +541,13 @@ async def handle_active_future_simple(callback_query: types.CallbackQuery, state
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -567,13 +567,13 @@ async def handle_active_future_continuous(callback_query: types.CallbackQuery, s
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -593,13 +593,13 @@ async def handle_active_future_perfect(callback_query: types.CallbackQuery, stat
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -619,13 +619,13 @@ async def handle_active_future_perfect_continuous(callback_query: types.Callback
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -645,13 +645,13 @@ async def handle_active_future_in_the_past_simple(callback_query: types.Callback
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -671,13 +671,13 @@ async def handle_active_future_in_the_past_continuous(callback_query: types.Call
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -697,13 +697,13 @@ async def handle_active_future_in_the_past_perfect(callback_query: types.Callbac
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -723,13 +723,13 @@ async def handle_active_future_in_the_past_perfect_continuous(callback_query: ty
             message = (
                 f"<b>Время: {result[0]}</b> (<b>{result[1]}</b>)\n"  # translation_name
                 f"<b>Описание:</b> {result[2]}\n\n"  # description
-                f"<b>[+]:</b> {result[3]}\n"  # formula
+                f"<b>[ + ]:</b> {result[3]}\n"  # formula
                 f"<b>     Пример:</b> {result[4]}\n"  # example
                 f"<b>     Перевод:</b> {result[5]}\n\n"  # translation_example
-                f"<b>[-]:</b> {result[6]}\n"  # negative_formula
+                f"<b>[ - ]:</b> {result[6]}\n"  # negative_formula
                 f"<b>     Пример:</b> {result[7]}\n"  # example_negative
                 f"<b>     Перевод:</b> {result[8]}\n\n"  # translation_example_negative
-                f"<b>[?]:</b> {result[9]}\n"  # interrogative_formula
+                f"<b>[ ? ]:</b> {result[9]}\n"  # interrogative_formula
                 f"<b>     Пример:</b> {result[10]}\n"  # example_interrogative
                 f"<b>     Перевод:</b> {result[11]}"  # translation_example_interrogative
             )
@@ -741,28 +741,29 @@ async def handle_active_future_in_the_past_perfect_continuous(callback_query: ty
 async def handle_passive_voice(callback_query: types.CallbackQuery, state: FSMContext):
     logging.info(f"handle_passive_voice {callback_query.from_user.id}")
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Present Simple", callback_data="present_simple"),
-         InlineKeyboardButton(text="Present Continuous", callback_data="present_continuous"),
-         InlineKeyboardButton(text="Present Perfect", callback_data="present_perfect"),
-         InlineKeyboardButton(text="Present Perfect Continuous", callback_data="present_perfect_continuous"),
-         ],
-        [InlineKeyboardButton(text="Past Simple", callback_data="past_simple"),
-         InlineKeyboardButton(text="Past Continuous", callback_data="past_continuous"),
-         InlineKeyboardButton(text="Past Perfect", callback_data="past_perfect"),
-         InlineKeyboardButton(text="Past Perfect Continuous", callback_data="past_perfect_continuous"),
-         ],
-        [InlineKeyboardButton(text="Future Simple", callback_data="future_simple"),
-         InlineKeyboardButton(text="Future Continuous", callback_data="future_continuous"),
-         InlineKeyboardButton(text="Future Perfect", callback_data="future_perfect"),
-         InlineKeyboardButton(text="Future Perfect Continuous", callback_data="future_perfect_continuous"),
-         ],
-        [InlineKeyboardButton(text="Future in the Past Simple", callback_data="future_in_the_past_simple"),
-         InlineKeyboardButton(text="Future in the Past Continuous", callback_data="future_in_the_past_continuous"),
-         InlineKeyboardButton(text="Future in the Past Perfect", callback_data="future_in_the_past_perfect"),
-         InlineKeyboardButton(text="Future in the Past Perfect Continuous",
-                              callback_data="future_in_the_past_perfect_continuous"),
-         ]
-    ])
-
-    await callback_query.message.answer("Выберите время:", reply_markup=kb)
+    # kb = InlineKeyboardMarkup(inline_keyboard=[
+    #     [InlineKeyboardButton(text="Present Simple", callback_data="present_simple"),
+    #      InlineKeyboardButton(text="Present Continuous", callback_data="present_continuous"),
+    #      InlineKeyboardButton(text="Present Perfect", callback_data="present_perfect"),
+    #      InlineKeyboardButton(text="Present Perfect Continuous", callback_data="present_perfect_continuous"),
+    #      ],
+    #     [InlineKeyboardButton(text="Past Simple", callback_data="past_simple"),
+    #      InlineKeyboardButton(text="Past Continuous", callback_data="past_continuous"),
+    #      InlineKeyboardButton(text="Past Perfect", callback_data="past_perfect"),
+    #      InlineKeyboardButton(text="Past Perfect Continuous", callback_data="past_perfect_continuous"),
+    #      ],
+    #     [InlineKeyboardButton(text="Future Simple", callback_data="future_simple"),
+    #      InlineKeyboardButton(text="Future Continuous", callback_data="future_continuous"),
+    #      InlineKeyboardButton(text="Future Perfect", callback_data="future_perfect"),
+    #      InlineKeyboardButton(text="Future Perfect Continuous", callback_data="future_perfect_continuous"),
+    #      ],
+    #     [InlineKeyboardButton(text="Future in the Past Simple", callback_data="future_in_the_past_simple"),
+    #      InlineKeyboardButton(text="Future in the Past Continuous", callback_data="future_in_the_past_continuous"),
+    #      InlineKeyboardButton(text="Future in the Past Perfect", callback_data="future_in_the_past_perfect"),
+    #      InlineKeyboardButton(text="Future in the Past Perfect Continuous",
+    #                           callback_data="future_in_the_past_perfect_continuous"),
+    #      ]
+    # ])
+    #
+    # await callback_query.message.answer("Выберите время:", reply_markup=kb)
+    await callback_query.message.answer("В процессе разработки.")

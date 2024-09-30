@@ -8,6 +8,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
 from pyexpat.errors import messages
 
+from functions.start_command import check_elite_status
 from shared import dp, DB_FILE, create_connection
 
 profile_router = Router()
@@ -39,8 +40,16 @@ async def check_profile(message: types.Message, state: FSMContext) -> None:
         elite_or_free_emoji = "💎"
     else:
         elite_or_free_emoji = "🆓"
-    button = InlineKeyboardButton(text="🏆Leaders Page", callback_data="top_leaders")
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button]])
+
+    elite_status = await check_elite_status(message.from_user.id)
+    if elite_status == 'No':
+        button = InlineKeyboardButton(text="🏆Leaders Page", callback_data="top_leaders")
+        button_2 = InlineKeyboardButton(text="Реферальная программа", callback_data="my_refs")
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[[button], [button_2]])
+    else:
+        button = InlineKeyboardButton(text="🏆Leaders Page", callback_data="top_leaders")
+        button_2 = InlineKeyboardButton(text="Реферальная программа", callback_data="my_refs")
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[[button], [button_2]])
 
     await message.answer(
         f"*Имя: [{full_name}](tg://user?id={user_id})*\n\nИзученные слова: {learned_words_count}\nКоличество созданных тем: {topics_count}\n{elite_or_free_emoji}Статус: {elite_status_text}",
@@ -105,3 +114,10 @@ async def update_learned_topics_count(user_id: int) -> None:
         return 0
     finally:
         conn.close()
+
+@profile_router.callback_query(F.data == "my_refs")
+async def send_referral_link(callback_query: types.CallbackQuery) -> None:
+    user_id = callback_query.from_user.id
+    referral_link = f"http://t.me/language_nova_bot?start={user_id}"
+
+    await callback_query.message.answer(f"Ваша реферальная ссылка: {referral_link}")

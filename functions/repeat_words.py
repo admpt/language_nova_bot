@@ -14,6 +14,8 @@ from shared import TOKEN, dp, DB_FILE, TranslationStates
 
 bot = Bot(token=TOKEN)
 repeat_words_router = Router()
+global current_topic_id
+
 
 @repeat_words_router.message(F.text == "Повторение слов", StateFilter(None))
 async def repeat_words(message: types.Message, state: FSMContext) -> None:
@@ -75,7 +77,8 @@ async def inline_query_handler_repeat(inline_query: types.InlineQuery) -> None:
 
 # Обработка выбранной темы сразу после инлайн-запроса
 @repeat_words_router.message(lambda message: message.text.startswith("Для повторения была выбрана тема:"))
-async def process_topic_selection_repeat(message: types.Message, state: FSMContext) -> None:
+async def process_topic_selection_repeat(message: types.Message) -> None:
+    global current_topic_id
     logging.info(f"process_topic_selection_repeat {message.from_user.id}")
     topic_name = message.text.split(": ", 1)[-1]
 
@@ -83,25 +86,24 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
     cursor = conn.cursor()
 
     try:
-        # Получаем ID темы по имени
         cursor.execute("SELECT id FROM topics WHERE content = ?", (topic_name,))
         topic = cursor.fetchone()
 
         if topic:
-            topic_id = topic[0]
-            cursor.execute("SELECT COUNT(*) FROM user_dictionary WHERE topic_id = ?", (topic_id,))
+            current_topic_id = topic[0]  # Устанавливаем глобальную переменную
+
+            cursor.execute("SELECT COUNT(*) FROM user_dictionary WHERE topic_id = ?", (current_topic_id,))
             word_count = cursor.fetchone()[0]
 
             message_text = f"Название темы: *{topic_name}*\nКоличество слов: {word_count}" if word_count > 0 else f"*{topic_name}*\nКоличество слов: 0"
-            command = f"поиск слова в теме: "
-            # Дальнейшие действия
+            command = f"поиск слова в теме {topic_name}: "
+
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="RU-ENG", callback_data=f"ru_eng:{topic_id}"),
-                 InlineKeyboardButton(text="ENG-RU", callback_data=f"eng_ru:{topic_id}")],
+                [InlineKeyboardButton(text="RU-ENG", callback_data=f"ru_eng:{current_topic_id}"),
+                 InlineKeyboardButton(text="ENG-RU", callback_data=f"eng_ru:{current_topic_id}")],
                 [InlineKeyboardButton(text="Найти слово", switch_inline_query_current_chat=command)]
             ])
             await message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
-            await state.clear()  # Очищаем состояние после выбора темы
         else:
             await message.answer("Тема не найдена.")
     except sqlite3.Error as e:
@@ -109,6 +111,7 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
         await message.answer("Произошла ошибка при получении данных.")
     finally:
         conn.close()
+
 
 
 @repeat_words_router.message(F.text == "Прекратить повтор")
@@ -237,40 +240,47 @@ async def check_ru_eng_translation(message: types.Message, state: FSMContext):
         await message.answer("Неправильно. Попробуйте еще раз.", reply_markup=stop_kb, resize_keyboard=True)
 
 
-@repeat_words_router.callback_query(lambda c: c.data.startswith("поиск слова в теме: "))
+@repeat_words_router.inline_query(lambda query: query.query.startswith("поиск слова в теме "))
 async def inline_query_handler_topics(inline_query: types.InlineQuery) -> None:
-    logging.info(f"inline_query_handler_topics {inline_query.from_user.id}")
-    command_prefix = "поиск слова в теме "
-    topic_name, search_query = inline_query.data[len(command_prefix):].strip().split(': ', 1)
+    global current_topic_id
+    user_id = inline_query.from_user.id
+    logging.info(f"inline_query_handler_topics {user_id}")
+
+    if current_topic_id is None:
+        await inline_query.answer([], cache_time=1)
+        return
+
+    query_parts = inline_query.query.split(": ", 1)
+    if len(query_parts) != 2:
+        logging.warning("Query does not contain a search term.")
+        await inline_query.answer([], cache_time=1)
+        return
+
+    search_query = query_parts[1].strip()
+    logging.info(f"Searching for words in topic ID: {current_topic_id} with query: {search_query}")
 
     try:
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id FROM topics WHERE content = ?", (topic_name,))
-            topic = cursor.fetchone()
-
-            if topic:
-                topic_id = topic[0]
-                cursor.execute("""
-                    SELECT word, translation
-                    FROM user_dictionary
-                    WHERE topic_id = ? AND word LIKE ?
-                    LIMIT 50
-                """, (topic_id, f'%{search_query}%'))
-                results = cursor.fetchall()
-            else:
-                results = []
+            cursor.execute(""" 
+                SELECT word, translation 
+                FROM user_dictionary 
+                WHERE topic_id = ? AND (word LIKE ? OR translation LIKE ?)
+                LIMIT 50 
+            """, (current_topic_id, f'%{search_query}%', f'%{search_query}%'))
+            results = cursor.fetchall()
 
         items = []
         for item in results:
             result_id = str(uuid4())
             title = item[0] if item[0] else 'Unknown Word'
+            message_text = f"Слово: {item[0]}\nПеревод: {item[1]}"
             items.append(
                 InlineQueryResultArticle(
                     id=result_id,
                     title=title,
                     input_message_content=InputTextMessageContent(
-                        message_text=f"Слово: {item[0]}\nПеревод: {item[1]}"
+                        message_text=message_text
                     )
                 )
             )
@@ -288,6 +298,7 @@ async def inline_query_handler_topics(inline_query: types.InlineQuery) -> None:
 
     except sqlite3.OperationalError as e:
         logging.error(f"Database error: {e}")
-        await inline_query.answer(results=[])
-
-# Доделать
+        await inline_query.answer([], cache_time=1)
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        await inline_query.answer([], cache_time=1)

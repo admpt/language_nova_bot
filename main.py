@@ -5,7 +5,7 @@ import asyncio
 import sys
 
 from aiogram.fsm.context import FSMContext
-
+import datetime
 from functions.add_topic import add_topic_prompt, add_topic_router
 from functions.add_words import add_words_router
 from functions.grammar import grammar_router
@@ -30,7 +30,8 @@ COMMANDS = [
     "Добавить слова",
     "Выбрать тему",
     "Грамматика",
-    "Прекратить повтор"
+    "Прекратить повтор",
+    "Отменить действие"
 ]
 dp.include_router(profile_router)
 dp.include_router(learning_router)

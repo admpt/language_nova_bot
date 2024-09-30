@@ -25,19 +25,41 @@ def upgrade_to_v1(conn: Connection) -> None:
         if 'topics_count' not in columns:
             cursor.execute("ALTER TABLE users ADD COLUMN topics_count INTEGER DEFAULT 0;")
 
+        if 'referral_code' not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN referral_code TEXT;")
+
+            # Добавляем столбец `referred_by`, если его нет
+        if 'referred_by' not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN referred_by INTEGER;")
+
+            # Добавляем столбец `elite_start_date`, если его нет
+        if 'elite_start_date' not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN elite_start_date DATETIME;")
+
+            # Добавляем столбец `elite_status`, если его нет
+        if 'elite_status' not in columns:
+            cursor.execute(
+                "ALTER TABLE users ADD COLUMN elite_status TEXT DEFAULT 'No' CHECK(elite_status IN ('Yes', 'No'));")
+
+
     else:
+
         # Если таблицы нет, создаем её
+
         cursor.execute(""" 
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER UNIQUE NOT NULL,
-                username_tg TEXT,
-                full_name TEXT,
-                balance INTEGER DEFAULT 0,
-                elite_status TEXT DEFAULT 'No' CHECK(elite_status IN ('Yes', 'No')),
-                learned_words_count INTEGER DEFAULT 0
-            )
-        """)
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER UNIQUE NOT NULL,
+                    username_tg TEXT,
+                    full_name TEXT,
+                    balance INTEGER DEFAULT 0,
+                    elite_status TEXT DEFAULT 'No' CHECK(elite_status IN ('Yes', 'No')),
+                    learned_words_count INTEGER DEFAULT 0,
+                    referral_code TEXT,
+                    referred_by INTEGER,
+                    elite_start_date DATETIME
+                )
+            """)
 
     # Создаем таблицу `user_dictionary`
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_dictionary';")

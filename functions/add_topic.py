@@ -2,6 +2,7 @@ import logging
 import sqlite3
 
 from aiogram import types, F, Router
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
@@ -21,6 +22,17 @@ async def add_topic_prompt(message: types.Message, state: FSMContext) -> None:
     await message.answer("Введите название темы:", reply_markup=keyboard)
     await state.set_state(Form.waiting_for_topic_name.state)
 
+@add_topic_router.message(F.text == "Отменить действие")
+async def cancel_action(message: types.Message, state: FSMContext) -> None:
+    logging.info(f"cancel_action {message.from_user.id}")
+    await state.clear()
+    kb = [
+        [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
+        [KeyboardButton(text="Повторение слов")],
+        [KeyboardButton(text="Грамматика")],
+    ]
+    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await message.answer("Вы отменили текущее действие. Что вы хотите сделать дальше?", reply_markup=keyboard)
 
 @add_topic_router.message(Form.waiting_for_topic_name)
 async def process_add_topic(message: types.Message, state: FSMContext) -> None:
@@ -66,18 +78,6 @@ async def go_back(message: types.Message, state: FSMContext) -> None:
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await message.answer("Вы вернулись в главное меню.", reply_markup=keyboard)
 
-
-@add_topic_router.message(F.text == "Отменить действие")
-async def cancel_action(message: types.Message, state: FSMContext) -> None:
-    logging.info(f"cancel_action {message.from_user.id}")
-    await state.clear()
-    kb = [
-        [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
-        [KeyboardButton(text="Повторение слов")],
-        [KeyboardButton(text="Грамматика")],
-    ]
-    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-    await message.answer("Вы отменили текущее действие. Что вы хотите сделать дальше?", reply_markup=keyboard)
 
 
 async def is_topic_exists(author_id: int, content: str) -> bool:
