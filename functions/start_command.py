@@ -40,12 +40,37 @@ async def process_start_command(message: types.Message, referral_code: str, stat
 
         referrer_id = await get_user_id_by_referral_code(referral_code) if referral_code else None
 
+        # Вставляем или обновляем пользователя
         await upsert_user_func(message.from_user.id, message.from_user.username or '', full_name, referral_code, referrer_id)
 
         logging.info(f"User data updated for {message.from_user.id}")
 
+        # Проверка, есть ли реферальный код и обновление статуса
+        if referrer_id:
+            await update_elite_status(referrer_id)
+            await update_elite_status(message.from_user.id)
+
     except Exception as e:
         logging.error(f"Error while updating user data: {e}")
+
+async def update_elite_status(user_id: int) -> None:
+    """Обновляем статус элиты у пользователя."""
+    conn = create_connection(DB_FILE)
+    try:
+        cursor = conn.cursor()
+        # Проверяем, если статус элиты еще не установлен
+        cursor.execute("SELECT elite_status FROM users WHERE user_id = ?", (user_id,))
+        result = cursor.fetchone()
+
+        if result and result[0] != 'Yes':
+            cursor.execute("UPDATE users SET elite_status = 'Yes', elite_start_date = ? WHERE user_id = ?",
+                           (datetime.datetime.now(), user_id))
+            conn.commit()
+            logging.info(f"User {user_id} granted elite status.")
+    except sqlite3.Error as e:
+        logging.error(f"Database error while updating elite status: {e}")
+    finally:
+        conn.close()
 
 async def get_user_id_by_referral_code(referral_code: str) -> int:
     """Получаем user_id по реферальному коду"""
@@ -114,17 +139,23 @@ async def check_elite_status(user_id: int) -> str:
         if result:
             elite_status, elite_start_date = result
             if elite_status == 'Yes':
-                start_date = datetime.datetime.strptime(elite_start_date, '%Y-%m-%d %H:%M:%S')
+                # Попробуем распарсить дату с миллисекундами
+                start_date = datetime.datetime.strptime(elite_start_date.split('.')[0], '%Y-%m-%d %H:%M:%S')
                 if (datetime.datetime.now() - start_date).days >= 3:
                     cursor.execute("UPDATE users SET elite_status = 'No', elite_start_date = NULL WHERE user_id = ?", (user_id,))
                     conn.commit()
+                    logging.info(f"User {user_id} elite status expired.")
                     return 'No'
             return elite_status
     except sqlite3.Error as e:
         logging.error(f"Database error: {e}")
         return 'No'
+    except ValueError as ve:
+        logging.error(f"Value error: {ve} for user_id {user_id} with elite_start_date {elite_start_date}")
+        return 'No'
     finally:
         conn.close()
+
 
 @start_router.message(F.text)
 async def handle_any_text(message: types.Message, state: FSMContext) -> None:
