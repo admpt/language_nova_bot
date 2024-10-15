@@ -14,6 +14,8 @@ DB_FILE = 'database.db'
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
+class DeleteStates(StatesGroup):
+    waiting_for_deletion = State()
 
 class TranslationStates(StatesGroup):
     ENG_RU = State()

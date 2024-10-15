@@ -36,24 +36,19 @@ async def check_profile(message: types.Message, state: FSMContext) -> None:
 
     full_name = f"{first_name} {last_name}" if first_name and last_name else first_name or last_name or "Пользователь"
     elite_status_text = "Элитный" if elite_status == "Yes" else "Free"
-    if elite_status_text == "Элитный":
-        elite_or_free_emoji = "💎"
-    else:
-        elite_or_free_emoji = "🆓"
+    elite_or_free_emoji = "💎" if elite_status_text == "Элитный" else "🆓"
 
     elite_status = await check_elite_status(message.from_user.id)
-    if elite_status == 'No':
-        button = InlineKeyboardButton(text="🏆Leaders Page", callback_data="top_leaders")
-        button_2 = InlineKeyboardButton(text="Реферальная программа", callback_data="my_refs")
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[[button], [button_2]])
-    else:
-        button = InlineKeyboardButton(text="🏆Leaders Page", callback_data="top_leaders")
-        button_2 = InlineKeyboardButton(text="Реферальная программа", callback_data="my_refs")
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[[button], [button_2]])
+    button = InlineKeyboardButton(text="🏆Leaders Page", callback_data="top_leaders")
+    button_2 = InlineKeyboardButton(text="Реферальная программа", callback_data="my_refs")
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button], [button_2]])
 
     await message.answer(
-        f"*Имя: [{full_name}](tg://user?id={user_id})*\n\nИзученные слова: {learned_words_count}\nКоличество созданных тем: {topics_count}\n{elite_or_free_emoji}Статус: {elite_status_text}",
-        parse_mode='MarkdownV2', reply_markup=keyboard
+        f"<b>Имя:</b> <a href='tg://user?id={user_id}'>{full_name}</a>\n\n"
+        f"<b>Изученные слова:</b> {learned_words_count}\n"
+        f"<b>Количество созданных тем:</b> {topics_count}\n"
+        f"<b>{elite_or_free_emoji}Статус:</b> {elite_status_text}",
+        parse_mode='HTML', reply_markup=keyboard
     )
 
 async def get_top_users() -> list:
@@ -63,6 +58,7 @@ async def get_top_users() -> list:
         ) as cursor:
             rows = await cursor.fetchall()
             return rows
+
 
 @profile_router.callback_query(F.data == "top_leaders")
 async def top_users(callback_query: types.CallbackQuery, state: FSMContext) -> None:
@@ -75,10 +71,25 @@ async def top_users(callback_query: types.CallbackQuery, state: FSMContext) -> N
 
     response = "<b>🔝Top-15 пользователей по изученным словам:</b>\n\n"
     for idx, (user_id, full_name, learned_words_count) in enumerate(rows, start=1):
-        user_link = f"<a href='tg://user?id={user_id}'>{full_name}</a>"  # Форматируем ссылку
-        response += f"{idx}. {user_link} - {learned_words_count} слов\n"
+        if learned_words_count == 0:
+            continue  # Пропускаем пользователей с 0 словами
 
-    await callback_query.message.answer(response, parse_mode='HTML')
+        user_link = f"<a href='tg://user?id={user_id}'>{full_name}</a>"  # Форматируем ссылку
+
+        # Определяем правильное окончание для слова "слово"
+        if learned_words_count == 1:
+            word_form = "слово"
+        elif 2 <= learned_words_count <= 4:
+            word_form = "слова"
+        else:
+            word_form = "слов"
+
+        response += f"{idx}. {user_link} - {learned_words_count} {word_form}\n"
+
+    if response == "<b>🔝Top-15 пользователей по изученным словам:</b>\n\n":
+        await callback_query.answer("Топ-15 пользователей отсутствует.")
+    else:
+        await callback_query.message.answer(response, parse_mode='HTML')
 
 
 # Функция для обновления количества изученных слов
