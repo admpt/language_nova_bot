@@ -175,36 +175,37 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
         logging.error(f"Database error: {e}")
         await message.answer("Произошла ошибка при получении данных.")
 
+
 # Функция для получения случайного глагола
 async def get_random_verb():
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT v1, v1_second, v2_first, v2_second, v3_first, v3_second, first_translation, second_translation, third_translation FROM irregular_verbs")
+        cursor.execute(
+            "SELECT v1, v1_second, v2_first, v2_second, v3_first, v3_second, first_translation, second_translation, third_translation FROM irregular_verbs")
         verbs = cursor.fetchall()
         if verbs:
             return random.choice(verbs)
     return None
 
 
-# Обработчик для продолжения ряда
 @grammar_router.callback_query(F.data == "continue_series")
-async def continue_series(callback_query: types.CallbackQuery, state: FSMContext):
-    logging.info(f"continue_series {callback_query.from_user.id}")
-
-    # Получаем случайный глагол из базы данных
+async def continue_series(message_or_callback_query, state: FSMContext):
+    logging.info(f"continue_series {message_or_callback_query.from_user.id}")
     verb_data = await get_random_verb()
 
     if not verb_data:
-        await callback_query.message.answer("Нет доступных глаголов в базе данных.")
+        await message_or_callback_query.answer("Нет доступных глаголов в базе данных.")
         return
 
-    # Сохраняем данные о глаголе в состояние
     await state.update_data(verb_data=verb_data)
-
     v1, v1_second = verb_data[0], verb_data[1]
-    infinitive = v1 if v1 else v1_second
+    infinitive = v1 or v1_second
 
-    await callback_query.message.answer(f"Введите Past Simple для: {infinitive}")
+    if isinstance(message_or_callback_query, types.CallbackQuery):
+        await message_or_callback_query.message.answer(f"Введите Past Simple для глагола: {infinitive}")
+    else:
+        await message_or_callback_query.answer(f"Введите Past Simple для глагола: {infinitive}")
+
     await state.set_state(TranslationStates.ask_past_simple)
 
 
@@ -221,16 +222,20 @@ async def ask_past_simple(message: types.Message, state: FSMContext):
     user_input = message.text.strip()
 
     if user_input in [v2_first, v2_second]:
-        await message.answer("Правильно! Теперь введите Past Participle.")
+        await message.answer(f"Правильно! Теперь введите Past Participle для глагола: {verb_data[0] or verb_data[1]}.")
         await state.set_state(TranslationStates.ask_past_participle)
     else:
-        await message.answer(f"Неправильно. Правильный ответ: {v2_first} или {v2_second}.")
+        correct_answer = ", ".join(filter(None, [v2_first, v2_second]))
+        await message.answer(f"Неправильно! Правильный ответ: {correct_answer}.")
+        await message.answer(f"Введите Past Participle для глагола: {verb_data[0] or verb_data[1]}")
+        await state.set_state(TranslationStates.ask_past_participle)
 
 
 @grammar_router.message(TranslationStates.ask_past_participle)
 async def ask_past_participle(message: types.Message, state: FSMContext):
     data = await state.get_data()
     verb_data = data.get('verb_data')
+    infinitive = verb_data[0] or verb_data[1]
 
     if not verb_data:
         await message.answer("Нет данных о глаголе.")
@@ -240,43 +245,78 @@ async def ask_past_participle(message: types.Message, state: FSMContext):
     user_input = message.text.strip()
 
     if user_input in [v3_first, v3_second]:
-        await message.answer("Правильно! Теперь введите перевод слова.")
-        await state.set_state(TranslationStates.ask_translation)
+        await message.answer("Совершенно верно! Теперь введите перевод слова.")
+        await state.update_data(correct_translation=next((t for t in verb_data[6:] if t), "Неизвестно"))
+        await message.answer(f"Переведите глагол {infinitive} на русский язык:")
+        await state.set_state(TranslationStates.check_translation)
     else:
-        await message.answer(f"Неправильно. Правильный ответ: {v3_first} или {v3_second}.")
-
-
-@grammar_router.message(TranslationStates.ask_translation)
-async def ask_translation(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    verb_data = data.get('verb_data')
-
-    if not verb_data:
-        await message.answer("Нет данных о глаголе.")
-        return
-
-    translations = verb_data[6:]
-    infinitive = verb_data[0] or verb_data[1]  # v1 or v1_second
-    correct_translation = next((t for t in translations if t), "Неизвестно")
-
-    await message.answer(f"Введите перевод слова *{infinitive}*:")
-    await state.update_data(correct_translation=correct_translation)  # Используем update_data для сохранения
-    await state.set_state(TranslationStates.check_translation)
+        correct_answer = ", ".join(filter(None, [v3_first, v3_second]))
+        await message.answer(f"Неправильно. Правильный ответ: {correct_answer}.")
+        await message.answer(f"Переведите глагол {infinitive} на русский язык:")
+        await state.update_data(correct_translation=next((t for t in verb_data[6:] if t), "Неизвестно"))
+        await state.set_state(TranslationStates.check_translation)
 
 
 @grammar_router.message(TranslationStates.check_translation)
 async def check_translation(message: types.Message, state: FSMContext):
     data = await state.get_data()
     correct_translation = data.get('correct_translation')
+    verb_data = data.get('verb_data')
     user_input = message.text.strip()
 
-    if user_input.lower() == correct_translation.lower():
-        await message.answer("Правильно!")
-    else:
-        await message.answer(f"Неправильно. Правильный перевод: {correct_translation}.")
+    # Составляем список правильных переводов
+    correct_translations = [correct_translation] + [t for t in verb_data[6:] if t]
 
-    # После проверки, продолжаем с новым словом
-    await continue_series(message.callback_query, state)  # Передаем callback_query
+    # Если перевод правильный
+    if user_input in correct_translations:
+        infinitive = verb_data[0] or verb_data[1]
+        v2_first = verb_data[2]
+        v2_second = verb_data[3]
+        v3_first = verb_data[4]
+        v3_second = verb_data[5]
+        translations = verb_data[6:]
+
+        past_simple_forms = [form for form in [v2_first, v2_second] if form]
+        past_participle_forms = [form for form in [v3_first, v3_second] if form]
+        translations = [t for t in translations if t]
+
+        response_parts = [f"Глагол: {infinitive}"]
+        if past_simple_forms:
+            response_parts.append(f"Past Simple: {' / '.join(past_simple_forms)}")
+        if past_participle_forms:
+            response_parts.append(f"Past Participle: {' / '.join(past_participle_forms)}")
+        if translations:
+            response_parts.append(f"Переводы: {' / '.join(translations)}")
+
+        await message.answer("Совершенно верно!\n" + '\n'.join(response_parts))
+
+    # Если перевод неправильный
+    else:
+        infinitive = verb_data[0] or verb_data[1]
+        v2_first = verb_data[2]
+        v2_second = verb_data[3]
+        v3_first = verb_data[4]
+        v3_second = verb_data[5]
+        translations = verb_data[6:]
+
+        past_simple_forms = [form for form in [v2_first, v2_second] if form]
+        past_participle_forms = [form for form in [v3_first, v3_second] if form]
+        translations = [t for t in translations if t]
+
+        response_parts = [f"Глагол: {infinitive}"]
+        if past_simple_forms:
+            response_parts.append(f"Past Simple: {' / '.join(past_simple_forms)}")
+        if past_participle_forms:
+            response_parts.append(f"Past Participle: {' / '.join(past_participle_forms)}")
+        if translations:
+            response_parts.append(f"Переводы: {' / '.join(translations)}")
+
+        await message.answer(
+            f"Неправильно! Правильный перевод: {correct_translation}.\n\nЗапомните!\n" + '\n'.join(response_parts))
+
+    # Переходим к следующему слову
+    await continue_series(message, state)
+
 
 @grammar_router.callback_query(F.data == "time_select")
 async def handle_type_time_select(callback_query: types.CallbackQuery, state: FSMContext):
