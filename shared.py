@@ -21,7 +21,10 @@ class TranslationStates(StatesGroup):
     ENG_RU = State()
     RU_ENG = State()
     repeat_irregular_verbs = State()
-
+    ask_past_simple = State()
+    ask_past_participle = State()
+    ask_translation = State()
+    check_translation = State()
 # Состояния пользователя
 class Form(StatesGroup):
     waiting_for_topic_name = State()

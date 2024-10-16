@@ -21,4 +21,4 @@ async def learning(message: types.Message) -> None:
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
-    await message.answer("Что вы хотите сделать дальше?\nДоделать описание", reply_markup=keyboard)
+    await message.answer("Вы открываете словарь. Что вы хотите сделать дальше?", reply_markup=keyboard)

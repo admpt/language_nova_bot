@@ -9,7 +9,7 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardMar
 import random
 
 from functions.profile import update_learned_words_count
-from shared import TOKEN, dp, DB_FILE, TranslationStates, DeleteStates
+from shared import TOKEN, DB_FILE, TranslationStates, DeleteStates
 
 bot = Bot(token=TOKEN)
 repeat_words_router = Router()
@@ -103,15 +103,15 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
 
             message_text = (f"Название темы: *{topic_name}*\n"
                             f"Количество слов: {word_count}\n"
-                            f"Статус: {'Публичная' if is_visible else 'Приватная'}\n"
+                            # f"Статус: {'Публичная' if is_visible else 'Приватная'}\n"
                             f"Автор: {author_link}")
 
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="RU-ENG", callback_data=f"ru_eng:{current_topic_id}"),
                  InlineKeyboardButton(text="ENG-RU", callback_data=f"eng_ru:{current_topic_id}")],
                 [InlineKeyboardButton(text="Слова в теме", callback_data=f"show_words:{current_topic_id}")],
-                [InlineKeyboardButton(text="Сделать приватной" if is_visible else "Сделать публичной",
-                                     callback_data=f"toggle_visibility:{current_topic_id}")]
+                # [InlineKeyboardButton(text="Сделать приватной" if is_visible else "Сделать публичной",
+                #                      callback_data=f"toggle_visibility:{current_topic_id}")]
             ])
             await message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
             await state.clear()
@@ -124,70 +124,70 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
         conn.close()
 
 
-@repeat_words_router.callback_query(F.data.startswith("toggle_visibility:"))
-async def toggle_visibility(callback_query: types.CallbackQuery) -> None:
-    topic_id = int(callback_query.data.split(":")[1])
-
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-
-    try:
-        # Получаем текущую видимость и ID автора темы
-        cursor.execute("SELECT visible, author_id FROM topics WHERE id = ?", (topic_id,))
-        result = cursor.fetchone()
-
-        if result:
-            current_visibility, author_id = result
-
-            # Меняем статус видимости
-            new_visibility = 1 - current_visibility  # 1 для публичной, 0 для приватной
-
-            # Обновляем статус в базе данных
-            cursor.execute("UPDATE topics SET visible = ? WHERE id = ?", (new_visibility, topic_id))
-            conn.commit()
-
-            # Получаем новое название темы и количество слов
-            cursor.execute("SELECT content FROM topics WHERE id = ?", (topic_id,))
-            topic_name = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM user_dictionary WHERE topic_id = ?", (topic_id,))
-            word_count = cursor.fetchone()[0]
-
-            # Получаем информацию об авторе
-            cursor.execute("SELECT full_name FROM users WHERE user_id = ?", (author_id,))
-            author = cursor.fetchone()
-            author_username = author[0] if author else "Неизвестный автор"
-
-            # Создаем ссылку на профиль автора
-            author_link = f"[{author_username}](tg://user?id={author_id})"
-
-            # Формируем текст сообщения о статусе
-            status_text = "Публичный" if new_visibility else "Приватный"
-            message_text = (f"Название темы: *{topic_name}*\n"
-                            f"Количество слов: {word_count}\n"
-                            f"Статус: {status_text}\n"
-                            f"Автор: {author_link}")
-
-            await callback_query.answer(f"Статус темы изменен на {status_text}.", show_alert=True)
-
-            # Создаём новую клавиатуру с обновлённой кнопкой
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="RU-ENG", callback_data=f"ru_eng:{topic_id}"),
-                 InlineKeyboardButton(text="ENG-RU", callback_data=f"eng_ru:{topic_id}")],
-                [InlineKeyboardButton(text="Слова в теме", callback_data=f"show_words:{topic_id}")],
-                [InlineKeyboardButton(text="Сделать приватной" if new_visibility else "Сделать публичной",
-                                     callback_data=f"toggle_visibility:{topic_id}")]
-            ])
-
-            # Обновляем сообщение с новой информацией и клавиатурой
-            await callback_query.message.edit_text(message_text, parse_mode='Markdown', reply_markup=kb)
-        else:
-            await callback_query.answer("Тема не найдена.", show_alert=True)
-    except sqlite3.Error as e:
-        logging.error(f"Database error: {e}")
-        await callback_query.answer("Произошла ошибка при изменении видимости темы.", show_alert=True)
-    finally:
-        conn.close()
+# @repeat_words_router.callback_query(F.data.startswith("toggle_visibility:"))
+# async def toggle_visibility(callback_query: types.CallbackQuery) -> None:
+#     topic_id = int(callback_query.data.split(":")[1])
+#
+#     conn = sqlite3.connect(DB_FILE)
+#     cursor = conn.cursor()
+#
+#     try:
+#         # Получаем текущую видимость и ID автора темы
+#         cursor.execute("SELECT visible, author_id FROM topics WHERE id = ?", (topic_id,))
+#         result = cursor.fetchone()
+#
+#         if result:
+#             current_visibility, author_id = result
+#
+#             # Меняем статус видимости
+#             new_visibility = 1 - current_visibility  # 1 для публичной, 0 для приватной
+#
+#             # Обновляем статус в базе данных
+#             cursor.execute("UPDATE topics SET visible = ? WHERE id = ?", (new_visibility, topic_id))
+#             conn.commit()
+#
+#             # Получаем новое название темы и количество слов
+#             cursor.execute("SELECT content FROM topics WHERE id = ?", (topic_id,))
+#             topic_name = cursor.fetchone()[0]
+#
+#             cursor.execute("SELECT COUNT(*) FROM user_dictionary WHERE topic_id = ?", (topic_id,))
+#             word_count = cursor.fetchone()[0]
+#
+#             # Получаем информацию об авторе
+#             cursor.execute("SELECT full_name FROM users WHERE user_id = ?", (author_id,))
+#             author = cursor.fetchone()
+#             author_username = author[0] if author else "Неизвестный автор"
+#
+#             # Создаем ссылку на профиль автора
+#             author_link = f"[{author_username}](tg://user?id={author_id})"
+#
+#             # Формируем текст сообщения о статусе
+#             status_text = "Публичный" if new_visibility else "Приватный"
+#             message_text = (f"Название темы: *{topic_name}*\n"
+#                             f"Количество слов: {word_count}\n"
+#                             f"Статус: {status_text}\n"
+#                             f"Автор: {author_link}")
+#
+#             await callback_query.answer(f"Статус темы изменен на {status_text}.", show_alert=True)
+#
+#             # Создаём новую клавиатуру с обновлённой кнопкой
+#             kb = InlineKeyboardMarkup(inline_keyboard=[
+#                 [InlineKeyboardButton(text="RU-ENG", callback_data=f"ru_eng:{topic_id}"),
+#                  InlineKeyboardButton(text="ENG-RU", callback_data=f"eng_ru:{topic_id}")],
+#                 [InlineKeyboardButton(text="Слова в теме", callback_data=f"show_words:{topic_id}")],
+#                 [InlineKeyboardButton(text="Сделать приватной" if new_visibility else "Сделать публичной",
+#                                      callback_data=f"toggle_visibility:{topic_id}")]
+#             ])
+#
+#             # Обновляем сообщение с новой информацией и клавиатурой
+#             await callback_query.message.edit_text(message_text, parse_mode='Markdown', reply_markup=kb)
+#         else:
+#             await callback_query.answer("Тема не найдена.", show_alert=True)
+#     except sqlite3.Error as e:
+#         logging.error(f"Database error: {e}")
+#         await callback_query.answer("Произошла ошибка при изменении видимости темы.", show_alert=True)
+#     finally:
+#         conn.close()
 
 
 @repeat_words_router.message(F.text == "Прекратить повтор")
@@ -404,14 +404,16 @@ async def go_back_theme(callback_query: types.CallbackQuery, state: FSMContext) 
             # Создаем ссылку на профиль автора
             author_link = f"[{author_username}](tg://user?id={author_id})"
 
-            message_text = f"Название темы: *{topic_name}*\nКоличество слов: {word_count}\nСтатус: {'Публичная' if is_visible else 'Приватная'}\nАвтор: {author_link}"
+            message_text = f"Название темы: *{topic_name}*\nКоличество слов: {word_count}\nАвтор: {author_link}"
+            # message_text = f"Название темы: *{topic_name}*\nКоличество слов: {word_count}\nСтатус: {'Публичная' if is_visible else 'Приватная'}\nАвтор: {author_link}"
+
 
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="RU-ENG", callback_data=f"ru_eng:{current_topic_id}"),
                  InlineKeyboardButton(text="ENG-RU", callback_data=f"eng_ru:{current_topic_id}")],
-                [InlineKeyboardButton(text="Слова в теме", callback_data=f"show_words:{current_topic_id}")],
-                [InlineKeyboardButton(text="Сделать приватной" if is_visible else "Сделать публичной",
-                                      callback_data=f"toggle_visibility:{current_topic_id}")]
+                [InlineKeyboardButton(text="Слова в теме", callback_data=f"show_words:{current_topic_id}")]
+                # [InlineKeyboardButton(text="Сделать приватной" if is_visible else "Сделать публичной",
+                #                       callback_data=f"toggle_visibility:{current_topic_id}")]
             ])
             await callback_query.message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
             await state.clear()
@@ -434,7 +436,7 @@ async def delete_word(callback_query: types.CallbackQuery, state: FSMContext) ->
         [KeyboardButton(text="Отменить действие")],
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-    await callback_query.message.answer("Введите номер слова или слово на английском для удаления.", reply_markup=keyboard)
+    await callback_query.message.answer("Введите слово на английском для удаления.", reply_markup=keyboard)
 
     # Установите состояние
     await state.set_state(DeleteStates.waiting_for_deletion.state)

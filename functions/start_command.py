@@ -99,7 +99,7 @@ async def process_start_learning(callback_query: types.CallbackQuery) -> None:
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
-    await bot.send_message(user_id, "Вы начали изучение! Что вы хотите сделать?", reply_markup=keyboard)
+    await bot.send_message(user_id, "Выберите интересующий вас раздел:", reply_markup=keyboard)
 
 async def upsert_user(user_id: int, username_tg: str, full_name: str, referral_code: str = None,
                       referrer_id: int = None, balance: int = 0, elite_status: str = 'No',
