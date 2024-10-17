@@ -14,8 +14,10 @@ from functions.profile import profile_router
 from functions.repeat_words import repeat_words_router
 from functions.start_command import process_start_command, start_router
 from shared import Form, TranslationStates, TOKEN
+from aiogram.client.session.aiohttp import AiohttpSession
 
-bot = Bot(token=TOKEN)
+session = AiohttpSession(proxy="http://proxy.server:3128")
+bot = Bot(token=TOKEN, session=session)
 dp = Dispatcher()
 
 # Настройка логирования
@@ -31,7 +33,8 @@ COMMANDS = [
     "Выбрать тему",
     "Грамматика",
     "Прекратить повтор",
-    "Отменить действие"
+    "Отменить действие",
+    "Прекратить"
 ]
 dp.include_router(profile_router)
 dp.include_router(learning_router)

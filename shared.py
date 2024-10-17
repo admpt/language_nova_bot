@@ -3,6 +3,7 @@ import sqlite3
 from sqlite3 import Connection
 
 from aiogram import Dispatcher, Bot
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.fsm.state import StatesGroup, State
 
 from token_of_bot import API_TOKEN
@@ -10,8 +11,8 @@ from token_of_bot import API_TOKEN
 TOKEN = API_TOKEN
 DB_FILE = 'database.db'
 
-# Создание экземпляров
-bot = Bot(token=TOKEN)
+session = AiohttpSession(proxy="http://proxy.server:3128")
+bot = Bot(token=TOKEN, session=session)
 dp = Dispatcher()
 
 class DeleteStates(StatesGroup):

@@ -176,6 +176,22 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
         await message.answer("Произошла ошибка при получении данных.")
 
 
+@grammar_router.message(F.text == "Прекратить")
+async def stop_iv(message: types.Message, state: FSMContext):
+    logging.info(f"stop_iv {message.from_user.id}")
+    await state.clear()  # Завершение текущего состояния
+
+    # Клавиатура для главного меню
+    kb = [
+        [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
+        [KeyboardButton(text="Повторение слов")],
+        [KeyboardButton(text="Грамматика")],
+    ]
+    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+    await message.answer("Вы вернулись в главное меню.", reply_markup=keyboard)
+
+
 # Функция для получения случайного глагола
 async def get_random_verb():
     with sqlite3.connect(DB_FILE) as conn:
@@ -192,7 +208,6 @@ async def get_random_verb():
 async def continue_series(message_or_callback_query, state: FSMContext):
     logging.info(f"continue_series {message_or_callback_query.from_user.id}")
     verb_data = await get_random_verb()
-
     if not verb_data:
         await message_or_callback_query.answer("Нет доступных глаголов в базе данных.")
         return
@@ -202,9 +217,17 @@ async def continue_series(message_or_callback_query, state: FSMContext):
     infinitive = v1 or v1_second
 
     if isinstance(message_or_callback_query, types.CallbackQuery):
-        await message_or_callback_query.message.answer(f"Введите Past Simple для глагола: {infinitive}")
+        kb = [
+            [KeyboardButton(text="Прекратить")]
+        ]
+        keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        await message_or_callback_query.message.answer(f"Введите Past Simple для глагола: {infinitive}", reply_markup=keyboard)
     else:
-        await message_or_callback_query.answer(f"Введите Past Simple для глагола: {infinitive}")
+        kb = [
+            [KeyboardButton(text="Прекратить")]
+        ]
+        keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        await message_or_callback_query.answer(f"Введите Past Simple для глагола: {infinitive}", reply_markup=keyboard)
 
     await state.set_state(TranslationStates.ask_past_simple)
 
@@ -213,7 +236,8 @@ async def continue_series(message_or_callback_query, state: FSMContext):
 async def ask_past_simple(message: types.Message, state: FSMContext):
     data = await state.get_data()
     verb_data = data.get('verb_data')
-
+    if ask_past_simple.text == "Прекратить":
+        return await stop_iv(message, state)
     if not verb_data:
         await message.answer("Нет данных о глаголе.")
         return
@@ -222,12 +246,20 @@ async def ask_past_simple(message: types.Message, state: FSMContext):
     user_input = message.text.strip()
 
     if user_input in [v2_first, v2_second]:
-        await message.answer(f"Правильно! Теперь введите Past Participle для глагола: {verb_data[0] or verb_data[1]}.")
+        kb = [
+            [KeyboardButton(text="Прекратить")]
+        ]
+        keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        await message.answer(f"Правильно! Теперь введите Past Participle для глагола: {verb_data[0] or verb_data[1]}.", reply_markup=keyboard)
         await state.set_state(TranslationStates.ask_past_participle)
     else:
+        kb = [
+            [KeyboardButton(text="Прекратить")]
+        ]
+        keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
         correct_answer = ", ".join(filter(None, [v2_first, v2_second]))
-        await message.answer(f"Неправильно! Правильный ответ: {correct_answer}.")
-        await message.answer(f"Введите Past Participle для глагола: {verb_data[0] or verb_data[1]}")
+        await message.answer(f"Неправильно! Правильный ответ: {correct_answer}.", reply_markup=keyboard)
+        await message.answer(f"Введите Past Participle для глагола: {verb_data[0] or verb_data[1]}", reply_markup=keyboard)
         await state.set_state(TranslationStates.ask_past_participle)
 
 
@@ -236,7 +268,8 @@ async def ask_past_participle(message: types.Message, state: FSMContext):
     data = await state.get_data()
     verb_data = data.get('verb_data')
     infinitive = verb_data[0] or verb_data[1]
-
+    if ask_past_participle.text == "Прекратить":
+        return await stop_iv(message, state)
     if not verb_data:
         await message.answer("Нет данных о глаголе.")
         return
@@ -245,14 +278,22 @@ async def ask_past_participle(message: types.Message, state: FSMContext):
     user_input = message.text.strip()
 
     if user_input in [v3_first, v3_second]:
-        await message.answer("Совершенно верно! Теперь введите перевод слова.")
+        kb = [
+            [KeyboardButton(text="Прекратить")]
+        ]
+        keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        await message.answer("Совершенно верно! Теперь введите перевод слова.", reply_markup=keyboard)
         await state.update_data(correct_translation=next((t for t in verb_data[6:] if t), "Неизвестно"))
-        await message.answer(f"Переведите глагол {infinitive} на русский язык:")
+        await message.answer(f"Переведите глагол {infinitive} на русский язык:", reply_markup=keyboard)
         await state.set_state(TranslationStates.check_translation)
     else:
+        kb = [
+            [KeyboardButton(text="Прекратить")]
+        ]
+        keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
         correct_answer = ", ".join(filter(None, [v3_first, v3_second]))
-        await message.answer(f"Неправильно. Правильный ответ: {correct_answer}.")
-        await message.answer(f"Переведите глагол {infinitive} на русский язык:")
+        await message.answer(f"Неправильно. Правильный ответ: {correct_answer}.", reply_markup=keyboard)
+        await message.answer(f"Переведите глагол {infinitive} на русский язык:", reply_markup=keyboard)
         await state.update_data(correct_translation=next((t for t in verb_data[6:] if t), "Неизвестно"))
         await state.set_state(TranslationStates.check_translation)
 
@@ -263,7 +304,8 @@ async def check_translation(message: types.Message, state: FSMContext):
     correct_translation = data.get('correct_translation')
     verb_data = data.get('verb_data')
     user_input = message.text.strip()
-
+    if check_translation.text == "Прекратить":
+        return await stop_iv(message, state)
     # Составляем список правильных переводов
     correct_translations = [correct_translation] + [t for t in verb_data[6:] if t]
 
@@ -288,7 +330,13 @@ async def check_translation(message: types.Message, state: FSMContext):
         if translations:
             response_parts.append(f"Переводы: {' / '.join(translations)}")
 
-        await message.answer("Совершенно верно!\n" + '\n'.join(response_parts))
+        kb = [
+            [KeyboardButton(text="Прекратить")]
+        ]
+        keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        correct_answer = ", ".join(filter(None, [v3_first, v3_second]))
+
+        await message.answer("Совершенно верно!\n" + '\n'.join(response_parts), reply_markup=keyboard)
 
     # Если перевод неправильный
     else:
@@ -310,9 +358,12 @@ async def check_translation(message: types.Message, state: FSMContext):
             response_parts.append(f"Past Participle: {' / '.join(past_participle_forms)}")
         if translations:
             response_parts.append(f"Переводы: {' / '.join(translations)}")
-
+        kb = [
+            [KeyboardButton(text="Прекратить")]
+        ]
+        keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
         await message.answer(
-            f"Неправильно! Правильный перевод: {correct_translation}.\n\nЗапомните!\n" + '\n'.join(response_parts))
+            f"Неправильно! Правильный перевод: {correct_translation}.\n\nЗапомните!\n" + '\n'.join(response_parts), reply_markup=keyboard)
 
     # Переходим к следующему слову
     await continue_series(message, state)
