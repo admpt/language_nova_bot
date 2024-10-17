@@ -78,10 +78,5 @@ async def main() -> None:
     logging.info("Bot is starting...")
     await dp.start_polling(bot)
 
-@add_words_router.inline_query(lambda query: query.strip() != "")
-async def global_inline_query_handler(inline_query: types.InlineQuery) -> None:
-    # Здесь ваша логика обработки инлайн-запроса
-    pass
-
 if __name__ == "__main__":
     asyncio.run(main())

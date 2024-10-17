@@ -58,7 +58,7 @@ async def add_words_prompt(message: types.Message, state: FSMContext) -> None:
 @add_words_router.inline_query(F.query.startswith("поиск темы для добавления слов: "))
 async def inline_query_handler(inline_query: types.InlineQuery) -> None:
     logging.info(f"inline_query_handler {inline_query.from_user.id}")
-    query = inline_query.query[len("поиск темы для добавления слов: "):].strip()  # Убираем команду
+    query = inline_query.query[len("поиск темы для добавления слов: "):].strip()
     user_id = inline_query.from_user.id
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
