@@ -8,13 +8,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
 
 from functions.start_command import get_user_id_by_referral_code
-from shared import is_command, update_learned_words_count, update_learned_topics_count
+from shared import is_command, update_learned_words_count, update_learned_topics_count, TOKEN
 from shared import DB_FILE, Form, create_connection
 from token_of_bot import API_TOKEN
 
-TOKEN = API_TOKEN
+from aiogram.client.session.aiohttp import AiohttpSession
 
-bot = Bot(token=TOKEN)
+session = AiohttpSession(proxy="http://proxy.server:3128")
+bot = Bot(token=TOKEN, session=session)
 
 add_words_router = Router()
 global topic_id

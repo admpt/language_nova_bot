@@ -5,11 +5,11 @@ from aiogram import types, Bot, Router, F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
-from shared import dp, DB_FILE, create_connection, TranslationStates
-from token_of_bot import API_TOKEN
+from shared import dp, DB_FILE, create_connection, TranslationStates, TOKEN
+from aiogram.client.session.aiohttp import AiohttpSession
 
-TOKEN = API_TOKEN
-bot = Bot(token=TOKEN)
+session = AiohttpSession(proxy="http://proxy.server:3128")
+bot = Bot(token=TOKEN, session=session)
 start_router = Router()
 
 @start_router.message(F.text.startswith("/start"))

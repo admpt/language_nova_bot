@@ -9,8 +9,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent, \
     ReplyKeyboardMarkup, KeyboardButton
 from shared import DB_FILE, TOKEN, TranslationStates
+from aiogram.client.session.aiohttp import AiohttpSession
 
-bot = Bot(token=TOKEN)
+session = AiohttpSession(proxy="http://proxy.server:3128")
+bot = Bot(token=TOKEN, session=session)
 
 logging.basicConfig(level=logging.INFO)
 grammar_router = Router()

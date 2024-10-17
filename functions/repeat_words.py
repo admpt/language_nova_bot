@@ -10,8 +10,10 @@ import random
 
 from functions.profile import update_learned_words_count
 from shared import TOKEN, DB_FILE, TranslationStates, DeleteStates
+from aiogram.client.session.aiohttp import AiohttpSession
 
-bot = Bot(token=TOKEN)
+session = AiohttpSession(proxy="http://proxy.server:3128")
+bot = Bot(token=TOKEN, session=session)
 repeat_words_router = Router()
 global current_topic_id
 
