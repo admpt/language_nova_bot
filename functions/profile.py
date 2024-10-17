@@ -13,6 +13,12 @@ from shared import dp, DB_FILE, create_connection
 
 profile_router = Router()
 
+@dp.profile_router(lambda query: query.strip() != "")
+async def inline_query_handler(inline_query: types.InlineQuery) -> None:
+    # Игнорируем запросы, которые не содержат текста
+    return  # Никакого ответа
+
+
 # Функция для получения данных пользователя
 async def get_user_data(user_id: int):
     async with aiosqlite.connect("database.db") as db:
