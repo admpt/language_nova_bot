@@ -35,10 +35,10 @@ async def check_profile(message: types.Message, state: FSMContext) -> None:
     full_name, elite_status, learned_words_count, topics_count = await get_user_data(user_id)
 
     full_name = f"{first_name} {last_name}" if first_name and last_name else first_name or last_name or "Пользователь"
-    elite_status_text = "Элитный" if elite_status == "Yes" else "Free"
-    elite_or_free_emoji = "💎" if elite_status_text == "Элитный" else "🆓"
-
-    elite_status = await check_elite_status(message.from_user.id)
+    # elite_status_text = "Элитный" if elite_status == "Yes" else "Free"
+    # elite_or_free_emoji = "💎" if elite_status_text == "Элитный" else "🆓"
+    #
+    # elite_status = await check_elite_status(message.from_user.id)
     button = InlineKeyboardButton(text="🏆Leaders Page", callback_data="top_leaders")
     button_2 = InlineKeyboardButton(text="Реферальная программа", callback_data="my_refs")
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[button], [button_2]])
@@ -46,8 +46,8 @@ async def check_profile(message: types.Message, state: FSMContext) -> None:
     await message.answer(
         f"<b>Имя:</b> <a href='tg://user?id={user_id}'>{full_name}</a>\n\n"
         f"<b>Изученные слова:</b> {learned_words_count}\n"
-        f"<b>Количество созданных тем:</b> {topics_count}\n"
-        f"<b>{elite_or_free_emoji}Статус:</b> {elite_status_text}",
+        f"<b>Количество созданных тем:</b> {topics_count}\n",
+        # f"<b>{elite_or_free_emoji}Статус:</b> {elite_status_text}",
         parse_mode='HTML', reply_markup=keyboard
     )
 
