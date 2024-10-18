@@ -128,8 +128,8 @@ async def update_learned_topics_count(user_id: int) -> None:
     finally:
         conn.close()
 
-@dp.inline_query(F.query == "Поделиться")
-async def podel(inline_query: InlineQuery):
+@profile_router.inline_query(F.query == "Поделиться")
+async def ref_inline(inline_query: InlineQuery):
     user_id = inline_query.from_user.id
     bot_name = (await inline_query.bot.me()).username
     results: list[InlineQueryResultArticle] = []
@@ -144,7 +144,7 @@ async def podel(inline_query: InlineQuery):
     ))
     await inline_query.answer(results, is_personal=True)
 
-@dp.callback_query(F.data == "my_refs")
+@profile_router.callback_query(F.data == "my_refs")
 async def send_referral_link(callback_query: types.CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     referral_link = f"http://t.me/language_nova_bot?start={user_id}"
