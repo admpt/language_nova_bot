@@ -4,7 +4,8 @@ import sqlite3
 import aiosqlite
 from aiogram import types, F, Router
 from aiogram.filters import StateFilter
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQuery, InlineQueryResultArticle, \
+    InputTextMessageContent
 from aiogram.fsm.context import FSMContext
 from pyexpat.errors import messages
 
@@ -127,9 +128,33 @@ async def update_learned_topics_count(user_id: int) -> None:
     finally:
         conn.close()
 
-@profile_router.callback_query(F.data == "my_refs")
+@dp.inline_query(F.query == "Поделиться")
+async def podel(inline_query: InlineQuery):
+    user_id = inline_query.from_user.id
+    bot_name = (await inline_query.bot.me()).username
+    results: list[InlineQueryResultArticle] = []
+
+    results.append(InlineQueryResultArticle(
+        id="referal_inline_link",
+        title="Нажмите, чтобы отправить реферальную ссылку",
+        description="",
+        input_message_content=InputTextMessageContent(
+            message_text=f"http://t.me/language_nova_bot?start={user_id}"
+        )
+    ))
+    await inline_query.answer(results, is_personal=True)
+
+@dp.callback_query(F.data == "my_refs")
 async def send_referral_link(callback_query: types.CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     referral_link = f"http://t.me/language_nova_bot?start={user_id}"
 
-    await callback_query.message.answer(f"Ваша реферальная ссылка: {referral_link}")
+    # Отправляем сообщение с инлайн кнопкой для выбора чата
+    await callback_query.message.answer(
+        f"Ваша реферальная ссылка:\n{referral_link}",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Пригласить друга", switch_inline_query=f"Поделиться")
+            ]
+        ])
+    )

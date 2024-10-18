@@ -406,7 +406,7 @@ async def go_back_theme(callback_query: types.CallbackQuery, state: FSMContext) 
             # Создаем ссылку на профиль автора
             author_link = f"[{author_username}](tg://user?id={author_id})"
 
-            message_text = f"Название темы: <b>{topic_name}</b>\nКоличество слов: {word_count}\nАвтор: {author_link}"
+            message_text = f"Название темы: *{topic_name}*\nКоличество слов: {word_count}\nАвтор: {author_link}"
             # message_text = f"Название темы: *{topic_name}*\nКоличество слов: {word_count}\nСтатус: {'Публичная' if is_visible else 'Приватная'}\nАвтор: {author_link}"
 
 
@@ -417,7 +417,7 @@ async def go_back_theme(callback_query: types.CallbackQuery, state: FSMContext) 
                 # [InlineKeyboardButton(text="Сделать приватной" if is_visible else "Сделать публичной",
                 #                       callback_data=f"toggle_visibility:{current_topic_id}")]
             ])
-            await callback_query.message.answer(message_text, parse_mode='HTML', reply_markup=kb)
+            await callback_query.message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
             await state.clear()
         else:
             await callback_query.answer("Тема не найдена.")
