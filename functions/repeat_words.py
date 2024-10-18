@@ -103,7 +103,7 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
             # Создаем ссылку на профиль автора
             author_link = f"[{author_username}](tg://user?id={author_id})"
 
-            message_text = (f"Название темы: <b>{topic_name}</b>\n"
+            message_text = (f"Название темы: *{topic_name}*\n"
                             f"Количество слов: {word_count}\n"
                             # f"Статус: {'Публичная' if is_visible else 'Приватная'}\n"
                             f"Автор: {author_link}")
@@ -115,7 +115,7 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
                 # [InlineKeyboardButton(text="Сделать приватной" if is_visible else "Сделать публичной",
                 #                      callback_data=f"toggle_visibility:{current_topic_id}")]
             ])
-            await message.answer(message_text, parse_mode='HTML', reply_markup=kb)
+            await message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
             await state.clear()
         else:
             await message.answer("Тема не найдена.")
