@@ -33,7 +33,8 @@ async def check_profile(message: types.Message, state: FSMContext) -> None:
     first_name = message.from_user.first_name
     last_name = message.from_user.last_name
     full_name, elite_status, learned_words_count, topics_count = await get_user_data(user_id)
-
+    await update_learned_words_count(user_id)
+    await update_learned_topics_count(user_id)
     full_name = f"{first_name} {last_name}" if first_name and last_name else first_name or last_name or "Пользователь"
     # elite_status_text = "Элитный" if elite_status == "Yes" else "Free"
     # elite_or_free_emoji = "💎" if elite_status_text == "Элитный" else "🆓"
@@ -131,4 +132,8 @@ async def send_referral_link(callback_query: types.CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     referral_link = f"http://t.me/language_nova_bot?start={user_id}"
 
-    await callback_query.message.answer(f"Ваша реферальная ссылка: {referral_link}")
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Нажмите, чтобы отправить приглашение.", url=referral_link)]
+    ])
+
+    await callback_query.message.answer(f"Ваша реферальная ссылка: {referral_link}", reply_markup=kb)

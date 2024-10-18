@@ -12,7 +12,7 @@ session = AiohttpSession(proxy="http://proxy.server:3128")
 bot = Bot(token=TOKEN, session=session)
 start_router = Router()
 
-@start_router.message(F.text.startswith("/start"))
+@start_router.message(F.text.startswith("/start", StateFilter(None)))
 async def start_command_handler(message: types.Message, state: FSMContext):
     command = message.text.split(maxsplit=1)
     referral_code = command[1] if len(command) > 1 else None
@@ -155,6 +155,17 @@ async def check_elite_status(user_id: int) -> str:
         return 'No'
     finally:
         conn.close()
+
+
+@start_router.message(F.text.startswith("/menu", StateFilter(None)))
+async def command_menu(message: types.Message, state: FSMContext):
+    kb = [
+        [KeyboardButton(text="Словарь"), KeyboardButton(text="Профиль")],
+        [KeyboardButton(text="Повторение слов")],
+        [KeyboardButton(text="Грамматика")],
+    ]
+    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await message.answer("Вы вернулись в главное меню.", reply_markup=keyboard)
 
 
 @start_router.message(F.text)
