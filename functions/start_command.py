@@ -5,7 +5,8 @@ from aiogram import types, Bot, Router, F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
-from shared import dp, DB_FILE, create_connection, TranslationStates, TOKEN
+from shared import dp, DB_FILE, create_connection, TranslationStates, TOKEN, update_learned_words_count, \
+    update_learned_topics_count
 from aiogram.client.session.aiohttp import AiohttpSession
 
 session = AiohttpSession(proxy="http://proxy.server:3128")
@@ -15,9 +16,12 @@ start_router = Router()
 @start_router.message(F.text.startswith("/start"))
 async def start_command_handler(message: types.Message, state: FSMContext):
     command = message.text.split(maxsplit=1)
+    user_id = message.from_user.id
     referral_code = command[1] if len(command) > 1 else None
     if referral_code and referral_code.startswith('='):
         referral_code = referral_code[1:]  # Удаляем '=' если есть
+    await update_learned_words_count(user_id)
+    await update_learned_topics_count(user_id)
     await process_start_command(message, referral_code, state, upsert_user)
 
 async def process_start_command(message: types.Message, referral_code: str, state: FSMContext, upsert_user_func) -> None:
