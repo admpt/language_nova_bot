@@ -132,12 +132,12 @@ async def send_referral_link(callback_query: types.CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     referral_link = f"http://t.me/language_nova_bot?start={user_id}"
 
-    # Отправляем сообщение с инлайн кнопкой для выбора чата
-    await callback_query.message.answer(
-        "Пригласить друга",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [
+    kb=InlineKeyboardMarkup(inline_keyboard=[
+        [
                 InlineKeyboardButton(text="Пригласить друга", switch_inline_query=f"Приглашаю тебя! Вот моя реферальная ссылка: {referral_link}")
-            ]
-        ])
+        ]
+    ])
+    await callback_query.message.answer(
+        f"Ваша реферальная ссылка: {referral_link}",
+        reply_markup=kb
     )
