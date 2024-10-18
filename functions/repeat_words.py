@@ -103,7 +103,7 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
             # Создаем ссылку на профиль автора
             author_link = f"[{author_username}](tg://user?id={author_id})"
 
-            message_text = (f"Название темы: *{topic_name}*\n"
+            message_text = (f"Название темы: <b>{topic_name}</b>\n"
                             f"Количество слов: {word_count}\n"
                             # f"Статус: {'Публичная' if is_visible else 'Приватная'}\n"
                             f"Автор: {author_link}")
@@ -115,7 +115,7 @@ async def process_topic_selection_repeat(message: types.Message, state: FSMConte
                 # [InlineKeyboardButton(text="Сделать приватной" if is_visible else "Сделать публичной",
                 #                      callback_data=f"toggle_visibility:{current_topic_id}")]
             ])
-            await message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
+            await message.answer(message_text, parse_mode='HTML', reply_markup=kb)
             await state.clear()
         else:
             await message.answer("Тема не найдена.")
@@ -230,7 +230,7 @@ async def ask_for_ru_translation(message: types.Message, user_id: int, topic_id:
             stop_kb = ReplyKeyboardMarkup(
                 keyboard=[[KeyboardButton(text="Прекратить повтор")]]
             )
-            await message.answer(f"Слово: *{word}*\nНапишите перевод на русском:", reply_markup=stop_kb, resize_keyboard=True)
+            await message.answer(f"Слово: <b>{word}</b>\nНапишите перевод на русском:", parse_mode='HTML', reply_markup=stop_kb, resize_keyboard=True)
             await state.update_data(current_word=word, current_translation=translation)
         else:
             await message.answer("В этой теме нет слов.")
@@ -292,7 +292,7 @@ async def ask_for_eng_translation(message: types.Message, user_id: int, topic_id
                 keyboard=[[KeyboardButton(text="Прекратить повтор")]]
             )
 
-            await message.answer(f"Слово: *{translation}*\nНапишите перевод на английском:", reply_markup=stop_kb, resize_keyboard=True)
+            await message.answer(f"Слово: <b>{translation}</b>\nНапишите перевод на английском:", parse_mode='HTML', reply_markup=stop_kb, resize_keyboard=True)
             await state.update_data(current_word=word, current_translation=translation)
         else:
             await message.answer("В этой теме нет слов.")
@@ -406,7 +406,7 @@ async def go_back_theme(callback_query: types.CallbackQuery, state: FSMContext) 
             # Создаем ссылку на профиль автора
             author_link = f"[{author_username}](tg://user?id={author_id})"
 
-            message_text = f"Название темы: *{topic_name}*\nКоличество слов: {word_count}\nАвтор: {author_link}"
+            message_text = f"Название темы: <b>{topic_name}</b>\nКоличество слов: {word_count}\nАвтор: {author_link}"
             # message_text = f"Название темы: *{topic_name}*\nКоличество слов: {word_count}\nСтатус: {'Публичная' if is_visible else 'Приватная'}\nАвтор: {author_link}"
 
 
@@ -417,7 +417,7 @@ async def go_back_theme(callback_query: types.CallbackQuery, state: FSMContext) 
                 # [InlineKeyboardButton(text="Сделать приватной" if is_visible else "Сделать публичной",
                 #                       callback_data=f"toggle_visibility:{current_topic_id}")]
             ])
-            await callback_query.message.answer(message_text, parse_mode='Markdown', reply_markup=kb)
+            await callback_query.message.answer(message_text, parse_mode='HTML', reply_markup=kb)
             await state.clear()
         else:
             await callback_query.answer("Тема не найдена.")
