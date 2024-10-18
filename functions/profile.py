@@ -127,7 +127,7 @@ async def update_learned_topics_count(user_id: int) -> None:
     finally:
         conn.close()
 
-@dp.callback_query(F.data == "my_refs")
+@profile_router.callback_query(F.data == "my_refs")
 async def send_referral_link(callback_query: types.CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     referral_link = f"http://t.me/language_nova_bot?start={user_id}"
