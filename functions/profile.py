@@ -127,13 +127,17 @@ async def update_learned_topics_count(user_id: int) -> None:
     finally:
         conn.close()
 
-@profile_router.callback_query(F.data == "my_refs")
+@dp.callback_query(F.data == "my_refs")
 async def send_referral_link(callback_query: types.CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     referral_link = f"http://t.me/language_nova_bot?start={user_id}"
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Нажмите, чтобы отправить приглашение.", url=referral_link)]
-    ])
-
-    await callback_query.message.answer(f"Ваша реферальная ссылка: {referral_link}", reply_markup=kb)
+    # Отправляем сообщение с инлайн кнопкой для выбора чата
+    await callback_query.message.answer(
+        "Пригласить друга",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Пригласить друга", switch_inline_query=f"Приглашаю тебя! Вот моя реферальная ссылка: {referral_link}")
+            ]
+        ])
+    )
